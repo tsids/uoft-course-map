@@ -27,5 +27,6 @@ backend/*
 **/.*
 *.txt
 *.json
+postRequisiteFinder.js
 !.gitignore
 
