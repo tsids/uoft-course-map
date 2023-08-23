@@ -83,7 +83,6 @@ export default function SearchBar(props) {
     }
 
     function updateFilters(currValues, action) {
-        console.log(currValues);
         let filterValues = [];
         switch (action.name) {
             case 'courses':
@@ -107,8 +106,6 @@ export default function SearchBar(props) {
             ...prevFilters,
             [action.name]: filterValues
         }))
-
-        console.log(props.filters.courses, props.filters.type);
     }
 
     return (
