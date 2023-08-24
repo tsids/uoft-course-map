@@ -1,5 +1,5 @@
 import '../App.css'
-import Select, { components } from 'react-select';
+import Select, { components, createFilter } from 'react-select';
 import Highlighter from 'react-highlight-words'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faAngleUp, faAngleDown, faMagnifyingGlass, faSliders } from '@fortawesome/free-solid-svg-icons'
@@ -56,35 +56,6 @@ export default function SearchBar(props) {
             .catch(err => console.log(err))
     }, [])
 
-    // async function connect() {
-    //     const uri = "";
-
-    //     <Select
-    //         isMulti
-    //         isClearable
-    //         autoFocus
-    //         backspaceRemovesValue
-    //         name="courses"
-    //         getOptionLabel={option => {
-    //             let section = ""
-    //             if (option.semesters.includes("Y"))
-    //                 section = "🍁❄️"
-    //             else {
-    //                 if (option.semesters.includes("F"))
-    //                     section = "🍁"
-    //                 if (option.semesters.includes("F"))
-    //                     section += "❄️"
-    //             }
-    //             return `${option.code}: ${option.name} ${section}`
-    //         }}
-    //         getOptionValue={option => option.code}
-    //         options={options}
-    //         className="basic-multi-select"
-    //         classNamePrefix="select"
-    //     />
-
-    // }
-
     function updateFilters(currValues, action) {
         let filterValues = [];
         switch (action.name) {
@@ -127,6 +98,7 @@ export default function SearchBar(props) {
                 options={searchBar}
                 getOptionLabel={option => option.name}
                 getOptionValue={option => option.code}
+                filterOption={createFilter({ ignoreAccents: false })}
                 formatOptionLabel={({ name, code, semesters }, { inputValue, context }) => {
                     return context === 'value' ? code :
                         (
