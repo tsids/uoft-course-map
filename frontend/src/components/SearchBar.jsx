@@ -3,18 +3,20 @@ import Select, { components } from 'react-select';
 import Highlighter from 'react-highlight-words'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faAngleUp, faAngleDown, faMagnifyingGlass, faSliders } from '@fortawesome/free-solid-svg-icons'
+import { useState, useEffect } from 'react';
+import axios from 'axios'
 
 const searches = [
-    { code: 'CSC108H5', name: 'Computer Science', sectionCode: ['F'] },
-    { code: 'MAT102H5', name: 'Math', sectionCode: ['F', 'S'] },
-    { code: 'STA107H5', name: 'Statistics', sectionCode: ['S'] },
-    { code: 'ECO101H5', name: 'Statistics', sectionCode: ['W'] },
-    { code: 'ECO102H5', name: 'Statistics', sectionCode: ['Y'] },
-    { code: 'CSC208H5', name: 'Computer Science', sectionCode: ['F'] },
-    { code: 'MAT202H5', name: 'Math', sectionCode: ['F', 'S'] },
-    { code: 'STA207H5', name: 'Statistics', sectionCode: ['S'] },
-    { code: 'ECO201H5', name: 'Statistics', sectionCode: ['W'] },
-    { code: 'ECO202H5', name: 'Statistics', sectionCode: ['Y'] },
+    { code: 'CSC108H5', name: 'Computer Science', semesters: ['F'] },
+    { code: 'MAT102H5', name: 'Math', semesters: ['F', 'S'] },
+    { code: 'STA107H5', name: 'Statistics', semesters: ['S'] },
+    { code: 'ECO101H5', name: 'Statistics', semesters: ['W'] },
+    { code: 'ECO102H5', name: 'Statistics', semesters: ['Y'] },
+    { code: 'CSC208H5', name: 'Computer Science', semesters: ['F'] },
+    { code: 'MAT202H5', name: 'Math', semesters: ['F', 'S'] },
+    { code: 'STA207H5', name: 'Statistics', semesters: ['S'] },
+    { code: 'ECO201H5', name: 'Statistics', semesters: ['W'] },
+    { code: 'ECO202H5', name: 'Statistics', semesters: ['Y'] },
 ]
 
 const searchTypes = [
@@ -46,41 +48,42 @@ const ValueContainer = ({ children, ...props }) => (
 
 export default function SearchBar(props) {
 
-    async function connect() {
-        const uri = "mongodb://localhost/courses";
-        const client = new MongoClient(uri);
+    const [searchBar, setSearchBar] = useState([])
 
-        await client.connect();
-        const db = client.db('courses');
-        const collection = db.collection('searchBar');
-        const options = collection.find();
+    useEffect(() => {
+        axios.get('/api/searches')
+            .then(res => setSearchBar(res.data))
+            .catch(err => console.log(err))
+    }, [])
 
-        <Select
-            isMulti
-            isClearable
-            autoFocus
-            backspaceRemovesValue
-            name="courses"
-            getOptionLabel={option => {
-                let section = ""
-                if (option.sectionCode.includes("Y"))
-                    section = "🍁❄️"
-                else {
-                    if (option.sectionCode.includes("F"))
-                        section = "🍁"
-                    if (option.sectionCode.includes("F"))
-                        section += "❄️"
-                }
-                return `${option.code}: ${option.name} ${section}`
-            }}
-            getOptionValue={option => option.code}
-            options={options}
-            className="basic-multi-select"
-            classNamePrefix="select"
-        />
+    // async function connect() {
+    //     const uri = "";
 
-        await client.close();
-    }
+    //     <Select
+    //         isMulti
+    //         isClearable
+    //         autoFocus
+    //         backspaceRemovesValue
+    //         name="courses"
+    //         getOptionLabel={option => {
+    //             let section = ""
+    //             if (option.semesters.includes("Y"))
+    //                 section = "🍁❄️"
+    //             else {
+    //                 if (option.semesters.includes("F"))
+    //                     section = "🍁"
+    //                 if (option.semesters.includes("F"))
+    //                     section += "❄️"
+    //             }
+    //             return `${option.code}: ${option.name} ${section}`
+    //         }}
+    //         getOptionValue={option => option.code}
+    //         options={options}
+    //         className="basic-multi-select"
+    //         classNamePrefix="select"
+    //     />
+
+    // }
 
     function updateFilters(currValues, action) {
         let filterValues = [];
@@ -119,12 +122,12 @@ export default function SearchBar(props) {
                 className="basic-multi-select w-[700px]"
                 classNamePrefix="select"
                 name="courses"
-                value={searches.filter(course => props.filters.courses.includes(course.code))}
+                value={searchBar.filter(course => props.filters.courses.includes(course.code))}
                 onChange={updateFilters}
-                options={searches}
+                options={searchBar}
                 getOptionLabel={option => option.name}
                 getOptionValue={option => option.code}
-                formatOptionLabel={({ name, code, sectionCode }, { inputValue, context }) => {
+                formatOptionLabel={({ name, code, semesters }, { inputValue, context }) => {
                     return context === 'value' ? code :
                         (
                             <div style={{ display: "flex" }}>
@@ -137,12 +140,12 @@ export default function SearchBar(props) {
                                 <div style={{ marginLeft: "auto" }}>
                                     {(() => {
                                         let section = ""
-                                        if (sectionCode.includes('Y')) section += "🍁❄️";
+                                        if (semesters.includes('Y')) section += "🍁❄️";
                                         else {
-                                            if (sectionCode.includes('F')) section += "🍁";
-                                            if (sectionCode.includes('W')) section += "❄️";
+                                            if (semesters.includes('F')) section += "🍁";
+                                            if (semesters.includes('W')) section += "❄️";
                                         }
-                                        if (sectionCode.includes('S')) section += "☀️";
+                                        if (semesters.includes('S')) section += "☀️";
                                         return section
                                     })()}
                                 </div>
@@ -172,7 +175,7 @@ export default function SearchBar(props) {
 }
 
 // Alternate Format Option Label for React select
-// formatOptionLabel={({ name, code, sectionCode }, { inputValue, context }) => {
+// formatOptionLabel={({ name, code, semesters }, { inputValue, context }) => {
 //     if (context === 'value') return code
 //     else {
 //       const label = `${code}: ${name}`
@@ -192,12 +195,12 @@ export default function SearchBar(props) {
 //           <div style={{ marginLeft: "auto" }}>
 //             {(() => {
 //               let section = ""
-//               if (sectionCode.includes('Y')) section += "🍁❄️";
+//               if (semesters.includes('Y')) section += "🍁❄️";
 //               else {
-//                 if (sectionCode.includes('F')) section += "🍁";
-//                 if (sectionCode.includes('W')) section += "❄️";
+//                 if (semesters.includes('F')) section += "🍁";
+//                 if (semesters.includes('W')) section += "❄️";
 //               }
-//               if (sectionCode.includes('S')) section += "☀️";
+//               if (semesters.includes('S')) section += "☀️";
 //               return section
 //             })()}
 //           </div>
@@ -207,151 +210,151 @@ export default function SearchBar(props) {
 //   }}
 
 
-function SearchBar2(props) {
+// function SearchBar2(props) {
 
 
-    function handleChange(event) {
-        const { name, value, type, checked } = event.target
-        props.setFilters(prevFilters => {
-            return {
-                ...prevFilters,
-                [name]: type === "checkbox" ? checked : value
-            }
-        })
-    }
+//     function handleChange(event) {
+//         const { name, value, type, checked } = event.target
+//         props.setFilters(prevFilters => {
+//             return {
+//                 ...prevFilters,
+//                 [name]: type === "checkbox" ? checked : value
+//             }
+//         })
+//     }
 
-    function handleSubmit(event) {
-        event.preventDefault()
-        console.log(props.filters)
-    }
+//     function handleSubmit(event) {
+//         event.preventDefault()
+//         console.log(props.filters)
+//     }
 
-    function handleKeyDown(e) {
-        if (e.key !== 'Enter') return
-        const value = e.target.value
-        if (!value.trim()) return
-        props.setFilters(prevFilters => {
-            return {
-                ...prevFilters,
-                courses: [...prevFilters.courses, value]
-            }
-        })
-        e.target.value = ''
-    }
+//     function handleKeyDown(e) {
+//         if (e.key !== 'Enter') return
+//         const value = e.target.value
+//         if (!value.trim()) return
+//         props.setFilters(prevFilters => {
+//             return {
+//                 ...prevFilters,
+//                 courses: [...prevFilters.courses, value]
+//             }
+//         })
+//         e.target.value = ''
+//     }
 
-    function deleteCourse(index) {
-        props.setFilters(oldFilters => {
-            return {
-                ...oldFilters,
-                courses: oldFilters.courses.filter((el, i) => i !== index)
-            }
-        })
-    }
+//     function deleteCourse(index) {
+//         props.setFilters(oldFilters => {
+//             return {
+//                 ...oldFilters,
+//                 courses: oldFilters.courses.filter((el, i) => i !== index)
+//             }
+//         })
+//     }
 
-    return (
-        <section>
-            <form onSubmit={handleSubmit}>
-                {console.log(props.filters.courses)}
-                <div className="border-solid border-2 p-2 rounded-sm mt-4 flex items-center flex-wrap">
-                    {props.filters.courses.map((course, index) => (
-                        <div className="tag-item" key={index}>
-                            <span className="text">{course}</span>
-                            <span className="close" onClick={() => deleteCourse(index)}>&times;</span>
-                        </div>
-                    ))}
-                    {/* <input onKeyDown={handleKeyDown} type="text" className="tags-input" placeholder="Type somthing" /> */}
-                    <input
-                        type="text"
-                        placeholder="Enter course"
-                        onKeyDown={handleKeyDown}
-                        // onChange={handleChange}
-                        name="courses"
-                        // value={props.filters.courses}
-                        className='tags-input'
-                    />
-                </div>
-            </form>
-        </section>
-    )
-}
+//     return (
+//         <section>
+//             <form onSubmit={handleSubmit}>
+//                 {console.log(props.filters.courses)}
+//                 <div className="border-solid border-2 p-2 rounded-sm mt-4 flex items-center flex-wrap">
+//                     {props.filters.courses.map((course, index) => (
+//                         <div className="tag-item" key={index}>
+//                             <span className="text">{course}</span>
+//                             <span className="close" onClick={() => deleteCourse(index)}>&times;</span>
+//                         </div>
+//                     ))}
+//                     {/* <input onKeyDown={handleKeyDown} type="text" className="tags-input" placeholder="Type somthing" /> */}
+//                     <input
+//                         type="text"
+//                         placeholder="Enter course"
+//                         onKeyDown={handleKeyDown}
+//                         // onChange={handleChange}
+//                         name="courses"
+//                         // value={props.filters.courses}
+//                         className='tags-input'
+//                     />
+//                 </div>
+//             </form>
+//         </section>
+//     )
+// }
 
-function TagsInput(props) {
+// function TagsInput(props) {
 
-    function handleKeyDown(e) {
-        if (e.key !== 'Enter') return
-        const value = e.target.value
-        if (!value.trim()) return
-        props.setFilters(prevFilters => {
-            return {
-                ...prevFilters,
-                courses: [...prevFilters.courses, value]
-            }
-        })
-        e.target.value = ''
-    }
+//     function handleKeyDown(e) {
+//         if (e.key !== 'Enter') return
+//         const value = e.target.value
+//         if (!value.trim()) return
+//         props.setFilters(prevFilters => {
+//             return {
+//                 ...prevFilters,
+//                 courses: [...prevFilters.courses, value]
+//             }
+//         })
+//         e.target.value = ''
+//     }
 
-    function deleteCourse(index) {
-        props.setFilters(oldFilters => {
-            return {
-                ...oldFilters,
-                courses: oldFilters.courses.filter((el, i) => i !== index)
-            }
-        })
-    }
+//     function deleteCourse(index) {
+//         props.setFilters(oldFilters => {
+//             return {
+//                 ...oldFilters,
+//                 courses: oldFilters.courses.filter((el, i) => i !== index)
+//             }
+//         })
+//     }
 
-    return (
-        <div className="border-solid border-2 p-2 rounded-sm mt-4 flex items-center flex-wrap">
-            {props.filters.courses.map((course, index) => (
-                <div className="tag-item" key={index}>
-                    <span className="text">{course}</span>
-                    <span className="close" onClick={() => deleteCourse(index)}>&times;</span>
-                </div>
-            ))}
-            <input onKeyDown={handleKeyDown} type="text" className="tags-input" placeholder="Type somthing" />
-        </div>
-    )
-}
+//     return (
+//         <div className="border-solid border-2 p-2 rounded-sm mt-4 flex items-center flex-wrap">
+//             {props.filters.courses.map((course, index) => (
+//                 <div className="tag-item" key={index}>
+//                     <span className="text">{course}</span>
+//                     <span className="close" onClick={() => deleteCourse(index)}>&times;</span>
+//                 </div>
+//             ))}
+//             <input onKeyDown={handleKeyDown} type="text" className="tags-input" placeholder="Type somthing" />
+//         </div>
+//     )
+// }
 
-function InputTag() {
-    // Using the State hook to declare our tags variable and setTags to update the variable.
-    const [tags, setTags] = React.useState([
-        'Tags',
-        'Input'
-    ]);
+// function InputTag() {
+//     // Using the State hook to declare our tags variable and setTags to update the variable.
+//     const [tags, setTags] = React.useState([
+//         'Tags',
+//         'Input'
+//     ]);
 
-    const removeTag = (i) => {
-        const newTags = [...tags];
-        newTags.splice(i, 1);
+//     const removeTag = (i) => {
+//         const newTags = [...tags];
+//         newTags.splice(i, 1);
 
-        // Call the defined function setTags which will replace tags with the new value.
-        setTags(newTags);
-    };
+//         // Call the defined function setTags which will replace tags with the new value.
+//         setTags(newTags);
+//     };
 
-    const inputKeyDown = (e) => {
-        const val = e.target.value;
-        if (e.key === 'Enter' && val) {
-            if (tags.find(tag => tag.toLowerCase() === val.toLowerCase())) {
-                return;
-            }
-            setTags([...tags, val]);
-            tagInput.value = null;
-        } else if (e.key === 'Backspace' && !val) {
-            removeTag(tags.length - 1);
-        }
-    };
+//     const inputKeyDown = (e) => {
+//         const val = e.target.value;
+//         if (e.key === 'Enter' && val) {
+//             if (tags.find(tag => tag.toLowerCase() === val.toLowerCase())) {
+//                 return;
+//             }
+//             setTags([...tags, val]);
+//             tagInput.value = null;
+//         } else if (e.key === 'Backspace' && !val) {
+//             removeTag(tags.length - 1);
+//         }
+//     };
 
 
-    return (
-        <div className="input-tag">
-            <ul className="input-tag__tags">
-                {tags.map((tag, i) => (
-                    <li key={tag}>
-                        {tag}
-                        <button type="button" onClick={() => { removeTag(i); }}>+</button>
-                    </li>
-                ))}
-                <li className="input-tag__tags__input"><input type="text" onKeyDown={inputKeyDown} ref={c => { tagInput = c; }} /></li>
-            </ul>
-        </div>
-    );
-}
+//     return (
+//         <div className="input-tag">
+//             <ul className="input-tag__tags">
+//                 {tags.map((tag, i) => (
+//                     <li key={tag}>
+//                         {tag}
+//                         <button type="button" onClick={() => { removeTag(i); }}>+</button>
+//                     </li>
+//                 ))}
+//                 <li className="input-tag__tags__input"><input type="text" onKeyDown={inputKeyDown} ref={c => { tagInput = c; }} /></li>
+//             </ul>
+//         </div>
+//     );
+// }
 
