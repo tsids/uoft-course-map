@@ -1,9 +1,11 @@
 import '../App.css'
 import Select, { components, createFilter } from 'react-select';
+import AsyncSelect from 'react-select/async'
 import Highlighter from 'react-highlight-words'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faAngleUp, faAngleDown, faMagnifyingGlass, faSliders } from '@fortawesome/free-solid-svg-icons'
 import { useState, useEffect } from 'react';
+import { FixedSizeList as List } from 'react-window';
 import axios from 'axios'
 
 const searches = [
@@ -46,6 +48,28 @@ const ValueContainer = ({ children, ...props }) => (
     )
 )
 
+// load values for courses
+const MenuList = props => {
+    const height = 50
+    const { options, children, maxHeight, getValue } = props
+    const [value] = getValue();
+    const initialOffset = options.indexOf(value) * height;
+    // const wrapperHeight = maxHeight < children.length * height
+    //     ? maxHeight
+    //     : (children.length * height) - 1;
+
+    return (
+        <List
+            height={maxHeight}
+            itemCount={children.length || 0}
+            itemSize={height}
+            initialScrollOffset={initialOffset}
+        >
+            {({ index }) => <div>{children[index]}</div>}
+        </List>
+    );
+};
+
 export default function SearchBar(props) {
 
     const [searchBar, setSearchBar] = useState([])
@@ -55,6 +79,20 @@ export default function SearchBar(props) {
             .then(res => setSearchBar(res.data))
             .catch(err => console.log(err))
     }, [])
+
+    const filterCourses = (searchInput) => {
+        return searchBar.filter(search =>
+            search.code.toLowerCase().includes(searchInput.toLowerCase()) ||
+            search.name.toLowerCase().includes(searchInput.toLowerCase())
+        );
+    };
+
+    const loadOptions = (searchInput, callback) => {
+        // setTimeout(() => {
+        // callback(filterCourses(searchInput));
+        callback(searchBar);
+        // }, 1000);
+    };
 
     function updateFilters(currValues, action) {
         let filterValues = [];
@@ -84,7 +122,7 @@ export default function SearchBar(props) {
 
     return (
         <section className="container flex gap-3 mx-auto mt-3">
-            <Select
+            <AsyncSelect
                 isMulti
                 isClearable
                 autoFocus
@@ -95,10 +133,13 @@ export default function SearchBar(props) {
                 name="courses"
                 value={searchBar.filter(course => props.filters.courses.includes(course.code))}
                 onChange={updateFilters}
-                options={searchBar}
+                // options={searchBar}
+                filterOption={createFilter({ ignoreAccents: false })}
+                cacheOptions
+                loadOptions={loadOptions}
+                defaultOptions={searchBar.slice(0, 500)}
                 getOptionLabel={option => option.name}
                 getOptionValue={option => option.code}
-                filterOption={createFilter({ ignoreAccents: false })}
                 formatOptionLabel={({ name, code, semesters }, { inputValue, context }) => {
                     return context === 'value' ? code :
                         (
