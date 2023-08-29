@@ -1,4 +1,4 @@
-import '../App.css'
+import '../index.css'
 import Select, { components, createFilter } from 'react-select';
 import AsyncSelect from 'react-select/async'
 import Highlighter from 'react-highlight-words'
@@ -50,25 +50,27 @@ const ValueContainer = ({ children, ...props }) => (
 
 // load values for courses
 const MenuList = props => {
-    const height = 50
-    const { options, children, maxHeight, getValue } = props
-    const [value] = getValue();
-    const initialOffset = options.indexOf(value) * height;
-    // const wrapperHeight = maxHeight < children.length * height
-    //     ? maxHeight
-    //     : (children.length * height) - 1;
+    const height = 40
+    const { children, maxHeight } = props
+
+    const childrenLength = children.length ? children.length : 0
+    const wrapperHeight = maxHeight < childrenLength * height
+        ? maxHeight
+        : (childrenLength * height);
 
     return (
         <List
-            height={maxHeight}
-            itemCount={children.length || 0}
+            className='whitespace-normal'
+            height={wrapperHeight}
+            itemCount={childrenLength || 0}
             itemSize={height}
-            initialScrollOffset={initialOffset}
+            overscanCount={20}
         >
-            {({ index }) => <div>{children[index]}</div>}
+            {({ index, style }) => <div style={style}>{children[index]}</div>}
         </List>
     );
 };
+
 
 export default function SearchBar(props) {
 
@@ -80,18 +82,10 @@ export default function SearchBar(props) {
             .catch(err => console.log(err))
     }, [])
 
-    const filterCourses = (searchInput) => {
-        return searchBar.filter(search =>
-            search.code.toLowerCase().includes(searchInput.toLowerCase()) ||
-            search.name.toLowerCase().includes(searchInput.toLowerCase())
-        );
-    };
-
     const loadOptions = (searchInput, callback) => {
-        // setTimeout(() => {
-        // callback(filterCourses(searchInput));
-        callback(searchBar);
-        // }, 1000);
+        setTimeout(() => {
+            callback(searchBar);
+        }, 1000);
     };
 
     function updateFilters(currValues, action) {
@@ -128,23 +122,25 @@ export default function SearchBar(props) {
                 autoFocus
                 hideSelectedOptions
                 backspaceRemovesValue
+                captureMenuScroll
+                closeMenuOnSelect={false}
                 className="basic-multi-select w-[700px]"
                 classNamePrefix="select"
                 name="courses"
                 value={searchBar.filter(course => props.filters.courses.includes(course.code))}
                 onChange={updateFilters}
-                // options={searchBar}
-                filterOption={createFilter({ ignoreAccents: false })}
                 cacheOptions
+                defaultOptions={searchBar}
                 loadOptions={loadOptions}
-                defaultOptions={searchBar.slice(0, 500)}
+                // defaultOptions={searchBar.slice(0, 500)}
+                filterOption={createFilter({ ignoreAccents: false })}
                 getOptionLabel={option => option.name}
                 getOptionValue={option => option.code}
                 formatOptionLabel={({ name, code, semesters }, { inputValue, context }) => {
                     return context === 'value' ? code :
                         (
                             <div style={{ display: "flex" }}>
-                                <div>
+                                <div className='whitespace-nowrap overflow-x-hidden overflow-ellipsis max-w-full'>
                                     <Highlighter
                                         searchWords={[inputValue]}
                                         textToHighlight={`${code}: ${name}`}
@@ -165,7 +161,7 @@ export default function SearchBar(props) {
                             </div>
                         )
                 }}
-                components={{ DropdownIndicator, ValueContainer }}
+                components={{ DropdownIndicator, ValueContainer, MenuList }}
                 styles={{ valueContainer: base => ({ ...base, paddingLeft: 32 }) }} // moves text to the right, so it doesn't interfere with search icon
                 placeholder="Search Courses..."
                 noOptionsMessage={() => "No Courses Found"}
@@ -179,7 +175,7 @@ export default function SearchBar(props) {
                 value={searchTypes.filter(type => type.value === props.filters.type)}
                 onChange={updateFilters}
             />
-            <button type="submit" className="h-10 rounded-full bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+            <button className="h-10 rounded-full bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
                 <FontAwesomeIcon icon={faSliders} className='mr-2' />
                 Filters
             </button>
