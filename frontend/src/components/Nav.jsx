@@ -9,10 +9,10 @@ export default function Nav(props) {
             <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
                 <div className="relative flex h-16 items-center justify-between">
                     {/* Logo and Title */}
-                    <div className="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start">
+                    <div className="flex flex-1 items-center justify-start sm:items-stretch">
                         <div className="flex flex-shrink-0 items-center gap-2">
                             <img className="h-12 w-auto" src={logo} alt="UofT Postrequisites" />
-                            <h1 class="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">UofT Postrequisites</h1>
+                            <h1 className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">UofT Postrequisites</h1>
                         </div>
                     </div>
 

@@ -27,5 +27,6 @@ backend/*
 **/.*
 postRequisiteFinder.js
 options.js
+*.jpg
 !.gitignore
 
