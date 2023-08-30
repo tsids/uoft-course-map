@@ -53,17 +53,6 @@ const MenuList = props => {
     );
 };
 
-// format labels for breadth reqs
-const formatGroupLabel = data => (
-    <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    }}>
-        <span style={{ fontSize: 14 }}>{data.label}</span>
-        <span style={{ backgroundColor: '#EBECF0', borderRadius: '2em', color: '#172B4D', display: 'inline-block', fontSize: 12, fontWeight: 'normal', lineHeight: '1', minWidth: 1, padding: '0.16666666666667em 0.5em', textAlign: 'center', }}
-        >{data.options.length}</span>
-    </div>
-);
-
 
 export default function SearchBar(props) {
 
@@ -113,7 +102,7 @@ export default function SearchBar(props) {
 
     return (
         <section className="container flex flex-col gap-2 mx-auto mt-3">
-            <div className='flex gap-3 w-full max-md:flex-col max-xl:mx-auto max-xl:items-center'>
+            <div className='flex gap-3 w-full max-lg:flex-col max-xl:mx-auto max-lg:items-center'>
                 <div>
                     <AsyncSelect
                         className="basic-multi-select w-full max-sm:w-[326px] max-md:max-w-[487px] lg:w-[750px]"
@@ -138,16 +127,10 @@ export default function SearchBar(props) {
                             return context === 'value' ? code :
                                 (
                                     <div style={{ display: "flex" }}>
-                                        <div className='max-md:hidden whitespace-nowrap overflow-x-hidden overflow-ellipsis max-w-full'>
+                                        <div className='whitespace-nowrap overflow-x-hidden overflow-ellipsis max-w-[80%]'>
                                             <Highlighter
                                                 searchWords={[inputValue]}
                                                 textToHighlight={`${code}: ${name}`}
-                                            />
-                                        </div>
-                                        <div className='md:hidden whitespace-nowrap overflow-x-hidden overflow-ellipsis max-w-full'>
-                                            <Highlighter
-                                                searchWords={[inputValue]}
-                                                textToHighlight={`${code}`}
                                             />
                                         </div>
                                         <div style={{ marginLeft: "auto" }}>
@@ -173,7 +156,7 @@ export default function SearchBar(props) {
                 </div>
                 <div className='flex gap-3'>
                     <Select
-                        className="basic-multi-select w-full max-sm:w-56 max-md:w-80 md:w-44"
+                        className="basic-multi-select w-full max-sm:w-56 max-md:w-96 max-lg:w-[502px] lg:w-44"
                         classNamePrefix="select"
                         name="type"
                         components={{ IndicatorSeparator: () => null }}
@@ -191,9 +174,9 @@ export default function SearchBar(props) {
                 </div>
             </div>
             {props.preferences.showfilters &&
-                <div className='flex gap-3 max-lg:flex-col max-md:items-center'>
+                <div className='flex gap-3 max-lg:flex-col max-lg:items-center'>
                     <Select /* Field of Study */
-                        className="basic-multi-select max-sm:w-[326px] max-md:w-[420px] max-lg:w-[607px] lg:w-80"
+                        className="basic-multi-select max-sm:w-[326px] max-md:w-[484px] max-lg:w-[607px] lg:w-80"
                         classNamePrefix="select"
                         name="fields"
                         isMulti
@@ -211,7 +194,7 @@ export default function SearchBar(props) {
                         onChange={updateFilters}
                     />
                     <Select /* Campuses */
-                        className="basic-multi-select max-sm:w-[326px] max-md:w-[420px] max-lg:w-[607px] lg:w-60"
+                        className="basic-multi-select max-sm:w-[326px] max-md:w-[484px] max-lg:w-[607px] lg:w-60"
                         classNamePrefix="select"
                         name="campus"
                         isMulti
@@ -228,7 +211,7 @@ export default function SearchBar(props) {
                         onChange={updateFilters}
                     />
                     <Select /* Year */
-                        className="basic-multi-select max-sm:w-[326px] max-md:w-[420px] max-lg:w-[607px] lg:w-64"
+                        className="basic-multi-select max-sm:w-[326px] max-md:w-[484px] max-lg:w-[607px] lg:w-64"
                         classNamePrefix="select"
                         name="year"
                         isMulti
@@ -244,7 +227,7 @@ export default function SearchBar(props) {
                         onChange={updateFilters}
                     />
                     <Select /* Semesters */
-                        className="basic-multi-select max-sm:w-[326px] max-md:w-[420px] max-lg:w-[607px] lg:w-60"
+                        className="basic-multi-select max-sm:w-[326px] max-md:w-[484px] max-lg:w-[607px] lg:w-60"
                         classNamePrefix="select"
                         name="semesters"
                         isMulti
@@ -261,7 +244,7 @@ export default function SearchBar(props) {
                         onChange={updateFilters}
                     />
                     <Select /* Breadth REQ */
-                        className="basic-multi-select max-sm:w-[326px] max-md:w-[420px] max-lg:w-[607px] lg:w-80"
+                        className="basic-multi-select max-sm:w-[326px] max-md:w-[484px] max-lg:w-[607px] lg:w-80"
                         classNamePrefix="select"
                         name="breadth"
                         isMulti
@@ -289,188 +272,3 @@ export default function SearchBar(props) {
         </section>
     )
 }
-
-// Alternate Format Option Label for React select
-// formatOptionLabel={({ name, code, semesters }, { inputValue, context }) => {
-//     if (context === 'value') return code
-//     else {
-//       const label = `${code}: ${name}`
-//       const regex = new RegExp(`(${inputValue})`, "gi")
-//       const parts = inputValue ? label.split(regex) : ""
-
-//       return (
-//         <div style={{ display: "flex" }}>
-//           <div>
-//             {
-//               parts ? parts.map((part, index) =>
-//                 regex.test(part) ? <mark key={index}>{part}</mark> : part
-//               )
-//                 : label
-//             }
-//           </div>
-//           <div style={{ marginLeft: "auto" }}>
-//             {(() => {
-//               let section = ""
-//               if (semesters.includes('Y')) section += "🍁❄️";
-//               else {
-//                 if (semesters.includes('F')) section += "🍁";
-//                 if (semesters.includes('W')) section += "❄️";
-//               }
-//               if (semesters.includes('S')) section += "☀️";
-//               return section
-//             })()}
-//           </div>
-//         </div>
-//       )
-//     }
-//   }}
-
-
-// function SearchBar2(props) {
-
-
-//     function handleChange(event) {
-//         const { name, value, type, checked } = event.target
-//         props.setFilters(prevFilters => {
-//             return {
-//                 ...prevFilters,
-//                 [name]: type === "checkbox" ? checked : value
-//             }
-//         })
-//     }
-
-//     function handleSubmit(event) {
-//         event.preventDefault()
-//         console.log(props.filters)
-//     }
-
-//     function handleKeyDown(e) {
-//         if (e.key !== 'Enter') return
-//         const value = e.target.value
-//         if (!value.trim()) return
-//         props.setFilters(prevFilters => {
-//             return {
-//                 ...prevFilters,
-//                 courses: [...prevFilters.courses, value]
-//             }
-//         })
-//         e.target.value = ''
-//     }
-
-//     function deleteCourse(index) {
-//         props.setFilters(oldFilters => {
-//             return {
-//                 ...oldFilters,
-//                 courses: oldFilters.courses.filter((el, i) => i !== index)
-//             }
-//         })
-//     }
-
-//     return (
-//         <section>
-//             <form onSubmit={handleSubmit}>
-//                 {console.log(props.filters.courses)}
-//                 <div className="border-solid border-2 p-2 rounded-sm mt-4 flex items-center flex-wrap">
-//                     {props.filters.courses.map((course, index) => (
-//                         <div className="tag-item" key={index}>
-//                             <span className="text">{course}</span>
-//                             <span className="close" onClick={() => deleteCourse(index)}>&times;</span>
-//                         </div>
-//                     ))}
-//                     {/* <input onKeyDown={handleKeyDown} type="text" className="tags-input" placeholder="Type somthing" /> */}
-//                     <input
-//                         type="text"
-//                         placeholder="Enter course"
-//                         onKeyDown={handleKeyDown}
-//                         // onChange={handleChange}
-//                         name="courses"
-//                         // value={props.filters.courses}
-//                         className='tags-input'
-//                     />
-//                 </div>
-//             </form>
-//         </section>
-//     )
-// }
-
-// function TagsInput(props) {
-
-//     function handleKeyDown(e) {
-//         if (e.key !== 'Enter') return
-//         const value = e.target.value
-//         if (!value.trim()) return
-//         props.setFilters(prevFilters => {
-//             return {
-//                 ...prevFilters,
-//                 courses: [...prevFilters.courses, value]
-//             }
-//         })
-//         e.target.value = ''
-//     }
-
-//     function deleteCourse(index) {
-//         props.setFilters(oldFilters => {
-//             return {
-//                 ...oldFilters,
-//                 courses: oldFilters.courses.filter((el, i) => i !== index)
-//             }
-//         })
-//     }
-
-//     return (
-//         <div className="border-solid border-2 p-2 rounded-sm mt-4 flex items-center flex-wrap">
-//             {props.filters.courses.map((course, index) => (
-//                 <div className="tag-item" key={index}>
-//                     <span className="text">{course}</span>
-//                     <span className="close" onClick={() => deleteCourse(index)}>&times;</span>
-//                 </div>
-//             ))}
-//             <input onKeyDown={handleKeyDown} type="text" className="tags-input" placeholder="Type somthing" />
-//         </div>
-//     )
-// }
-
-// function InputTag() {
-//     // Using the State hook to declare our tags variable and setTags to update the variable.
-//     const [tags, setTags] = React.useState([
-//         'Tags',
-//         'Input'
-//     ]);
-
-//     const removeTag = (i) => {
-//         const newTags = [...tags];
-//         newTags.splice(i, 1);
-
-//         // Call the defined function setTags which will replace tags with the new value.
-//         setTags(newTags);
-//     };
-
-//     const inputKeyDown = (e) => {
-//         const val = e.target.value;
-//         if (e.key === 'Enter' && val) {
-//             if (tags.find(tag => tag.toLowerCase() === val.toLowerCase())) {
-//                 return;
-//             }
-//             setTags([...tags, val]);
-//             tagInput.value = null;
-//         } else if (e.key === 'Backspace' && !val) {
-//             removeTag(tags.length - 1);
-//         }
-//     };
-
-
-//     return (
-//         <div className="input-tag">
-//             <ul className="input-tag__tags">
-//                 {tags.map((tag, i) => (
-//                     <li key={tag}>
-//                         {tag}
-//                         <button type="button" onClick={() => { removeTag(i); }}>+</button>
-//                     </li>
-//                 ))}
-//                 <li className="input-tag__tags__input"><input type="text" onKeyDown={inputKeyDown} ref={c => { tagInput = c; }} /></li>
-//             </ul>
-//         </div>
-//     );
-// }
-

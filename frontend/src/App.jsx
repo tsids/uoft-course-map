@@ -7,12 +7,12 @@ import { useState, useEffect } from 'react'
 
 function App() {
   const [filters, setFilters] = useState(JSON.parse(localStorage.getItem("filters")) || {
-    courses: ['CSC108H1', 'MATB41H3', 'STA258H5', 'MAT243H3'],
+    courses: [],
     type: "",
     fields: [],
-    campus: ['UTSC', 'Seneca'],
-    year: [1, '5+', 7],
-    semesters: ['W', 'G'],
+    campus: [],
+    year: [],
+    semesters: [],
     breadth: [],
   })
 
@@ -37,17 +37,6 @@ function App() {
       [setting]: !prevPreferences[setting]
     }))
   }
-
-
-  // const [colors, setColors] = useState(JSON.parse(localStorage.getItem("colors")) ? JSON.parse(localStorage.getItem("colors")) : {
-  //   colors: ['ocean', 'blue', 'pink'],
-  //   idk: [],
-  //   lol: "",
-  // })
-
-  // useEffect(() => {
-  //   localStorage.setItem("colors", JSON.stringify(colors))
-  // }, [colors]);
 
   return (
     // <main className='max-w-2xl mx-auto my-0 p-8'>
