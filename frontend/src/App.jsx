@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react'
 function App() {
   const [filters, setFilters] = useState(JSON.parse(localStorage.getItem("filters")) || {
     courses: [],
-    type: "",
+    type: "postrequisites",
     fields: [],
     campus: [],
     year: [],

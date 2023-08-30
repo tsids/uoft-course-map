@@ -162,7 +162,6 @@ export default function SearchBar(props) {
                         components={{ IndicatorSeparator: () => null }}
                         options={searchTypes}
                         value={searchTypes.filter(type => type.value === props.filters.type)}
-                        defaultValue={searchTypes[1]}
                         placeholder="Type"
                         styles={{ menu: base => ({ ...base, top: undefined }) }}
                         onChange={updateFilters}
@@ -205,7 +204,6 @@ export default function SearchBar(props) {
                         components={{ DropdownIndicator }}
                         options={campuses}
                         value={campuses.filter(item => props.filters.campus.includes(item.value))}
-                        defaultValue={campuses[0]}
                         placeholder="Campus"
                         styles={{ menu: base => ({ ...base, top: undefined }) }}
                         onChange={updateFilters}
