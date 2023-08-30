@@ -1,5 +1,4 @@
 import Select, { components, createFilter } from 'react-select';
-import AsyncSelect from 'react-select/async'
 import Highlighter from 'react-highlight-words'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faAngleUp, faAngleDown, faMagnifyingGlass, faSliders } from '@fortawesome/free-solid-svg-icons'
@@ -41,17 +40,24 @@ const MenuList = props => {
         ? maxHeight
         : (childrenLength * height);
 
-    return (
-        <List
-            height={wrapperHeight}
-            itemCount={childrenLength || 0}
-            itemSize={height}
-            overscanCount={20}
-        >
-            {({ index, style }) => <div style={style}>{children[index]}</div>}
-        </List>
-    );
-};
+    if (childrenLength) {
+        return (
+            <List
+                height={wrapperHeight}
+                itemCount={childrenLength || 0}
+                itemSize={height}
+                overscanCount={20}
+            >
+                {({ index, style }) => <div style={style}>{children[index]}</div>}
+            </List>
+        )
+    }
+    else {
+        return (
+            <components.NoOptionsMessage {...props} />
+        )
+    }
+}
 
 
 export default function SearchBar(props) {
@@ -67,12 +73,6 @@ export default function SearchBar(props) {
             .then(res => setFields(Object.values(res.data.reduce((acc, curr) => (acc[curr.department.code] = curr.department, acc), {}))))
             .catch(err => console.log(err))
     }, [])
-
-    const loadOptions = (searchInput, callback) => {
-        setTimeout(() => {
-            callback(courses);
-        }, 1000);
-    };
 
     function updateFilters(currValues, action) {
         let filterValues = [];
@@ -103,57 +103,53 @@ export default function SearchBar(props) {
     return (
         <section className="container flex flex-col gap-2 mx-auto mt-3">
             <div className='flex gap-3 w-full max-lg:flex-col max-xl:mx-auto max-lg:items-center'>
-                <div>
-                    <AsyncSelect
-                        className="basic-multi-select w-full max-sm:w-[326px] max-md:max-w-[487px] lg:w-[750px]"
-                        classNamePrefix="select"
-                        name="courses"
-                        isMulti
-                        isClearable
-                        autoFocus
-                        hideSelectedOptions
-                        backspaceRemovesValue
-                        captureMenuScroll
-                        closeMenuOnSelect={false}
-                        value={courses.filter(course => props.filters.courses.includes(course.code))}
-                        onChange={updateFilters}
-                        cacheOptions
-                        defaultOptions={courses}
-                        loadOptions={loadOptions}
-                        filterOption={createFilter({ ignoreAccents: false })}
-                        getOptionLabel={option => option.name}
-                        getOptionValue={option => option.code}
-                        formatOptionLabel={({ name, code, semesters }, { inputValue, context }) => {
-                            return context === 'value' ? code :
-                                (
-                                    <div style={{ display: "flex" }}>
-                                        <div className='whitespace-nowrap overflow-x-hidden overflow-ellipsis max-w-[80%]'>
-                                            <Highlighter
-                                                searchWords={[inputValue]}
-                                                textToHighlight={`${code}: ${name}`}
-                                            />
-                                        </div>
-                                        <div style={{ marginLeft: "auto" }}>
-                                            {(() => {
-                                                let section = ""
-                                                if (semesters.includes('Y')) section += "🍁❄️";
-                                                else {
-                                                    if (semesters.includes('F')) section += "🍁";
-                                                    if (semesters.includes('W')) section += "❄️";
-                                                }
-                                                if (semesters.includes('S')) section += "☀️";
-                                                return section
-                                            })()}
-                                        </div>
+                <Select
+                    className="basic-multi-select w-full max-sm:w-[326px] max-md:max-w-[487px] lg:w-[750px]"
+                    classNamePrefix="select"
+                    name="courses"
+                    isMulti
+                    isClearable
+                    autoFocus
+                    hideSelectedOptions
+                    backspaceRemovesValue
+                    captureMenuScroll
+                    closeMenuOnSelect={false}
+                    value={courses.filter(course => props.filters.courses.includes(course.code))}
+                    onChange={updateFilters}
+                    options={courses}
+                    filterOption={createFilter({ ignoreAccents: false })}
+                    getOptionLabel={option => option.name}
+                    getOptionValue={option => option.code}
+                    formatOptionLabel={({ name, code, semesters }, { inputValue, context }) => {
+                        return context === 'value' ? code :
+                            (
+                                <div style={{ display: "flex" }}>
+                                    <div className='whitespace-nowrap overflow-x-hidden overflow-ellipsis max-w-[80%]'>
+                                        <Highlighter
+                                            searchWords={[inputValue]}
+                                            textToHighlight={`${code}: ${name}`}
+                                        />
                                     </div>
-                                )
-                        }}
-                        components={{ DropdownIndicator, ValueContainer, MenuList }}
-                        styles={{ valueContainer: base => ({ ...base, paddingLeft: 32, top: undefined }) }} // moves text to the right, so it doesn't interfere with search icon
-                        placeholder="Search Courses..."
-                        noOptionsMessage={() => "No Courses Found"}
-                    />
-                </div>
+                                    <div style={{ marginLeft: "auto" }}>
+                                        {(() => {
+                                            let section = ""
+                                            if (semesters.includes('Y')) section += "🍁❄️";
+                                            else {
+                                                if (semesters.includes('F')) section += "🍁";
+                                                if (semesters.includes('W')) section += "❄️";
+                                            }
+                                            if (semesters.includes('S')) section += "☀️";
+                                            return section
+                                        })()}
+                                    </div>
+                                </div>
+                            )
+                    }}
+                    components={{ DropdownIndicator, ValueContainer, MenuList }}
+                    styles={{ valueContainer: base => ({ ...base, paddingLeft: 32, top: undefined }) }} // moves text to the right, so it doesn't interfere with search icon
+                    placeholder="Search Courses..."
+                    noOptionsMessage={() => "No Courses Found"}
+                />
                 <div className='flex gap-3'>
                     <Select
                         className="basic-multi-select w-full max-sm:w-56 max-md:w-96 max-lg:w-[502px] lg:w-44"

@@ -43,7 +43,7 @@ function App() {
     <main className={`${preferences.darkMode ? "dark" : "bg-[#d7d8dd]"} h-screen`}>
       <Nav preferences={preferences} updatePreferences={updatePreferences} />
       <SearchBar filters={filters} setFilters={setFilters} preferences={preferences} updatePreferences={updatePreferences} className="z-10" />
-      <Map />
+      <Map filters={filters} />
       {/* <Sidebar filters={colors} setFilters={setColors} /> */}
     </main>
   )
