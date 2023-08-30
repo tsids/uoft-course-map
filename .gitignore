@@ -29,4 +29,5 @@ postRequisiteFinder.js
 options.js
 *.jpg
 !.gitignore
+*.txt
 
