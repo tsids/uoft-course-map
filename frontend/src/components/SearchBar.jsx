@@ -1,4 +1,3 @@
-import '../index.css'
 import Select, { components, createFilter } from 'react-select';
 import AsyncSelect from 'react-select/async'
 import Highlighter from 'react-highlight-words'
@@ -7,24 +6,8 @@ import { faAngleUp, faAngleDown, faMagnifyingGlass, faSliders } from '@fortaweso
 import { useState, useEffect } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import axios from 'axios'
-
-const searches = [
-    { code: 'CSC108H5', name: 'Computer Science', semesters: ['F'] },
-    { code: 'MAT102H5', name: 'Math', semesters: ['F', 'S'] },
-    { code: 'STA107H5', name: 'Statistics', semesters: ['S'] },
-    { code: 'ECO101H5', name: 'Statistics', semesters: ['W'] },
-    { code: 'ECO102H5', name: 'Statistics', semesters: ['Y'] },
-    { code: 'CSC208H5', name: 'Computer Science', semesters: ['F'] },
-    { code: 'MAT202H5', name: 'Math', semesters: ['F', 'S'] },
-    { code: 'STA207H5', name: 'Statistics', semesters: ['S'] },
-    { code: 'ECO201H5', name: 'Statistics', semesters: ['W'] },
-    { code: 'ECO202H5', name: 'Statistics', semesters: ['Y'] },
-]
-
-const searchTypes = [
-    { value: "prerequisites", label: "Prerequisites" },
-    { value: "postrequisites", label: "Postrequisites" }
-]
+import { searchTypes, campuses, semesters, year } from './options.js'
+import '../index.css'
 
 // Change caret dropdown
 const DropdownIndicator = props => (
@@ -60,7 +43,6 @@ const MenuList = props => {
 
     return (
         <List
-            className='whitespace-normal'
             height={wrapperHeight}
             itemCount={childrenLength || 0}
             itemSize={height}
@@ -91,21 +73,19 @@ export default function SearchBar(props) {
     function updateFilters(currValues, action) {
         let filterValues = [];
         switch (action.name) {
-            case 'courses':
-                filterValues = currValues.map(value => value.code)
+            case 'courses': filterValues = currValues.map(value => value.code)
                 break;
-            case 'type':
-                filterValues = currValues.value
+            case 'type': filterValues = currValues.value
                 break;
-            case 'field': currValues.map(value => value.code)
+            case 'field': filterValues = currValues.map(value => value.code)
                 break;
-            case 'campus': currValues.map(value => value.campus)
+            case 'campus': filterValues = currValues.map(value => value.code)
                 break;
-            case 'year': currValues.map(value => value.level)
+            case 'year': filterValues = currValues.map(value => value.code)
                 break;
-            case 'semesters': currValues.map(value => value.semesters)
+            case 'semesters': filterValues = currValues.map(value => value.label)
                 break;
-            case 'breadth': currValues.map(value => value.code)
+            case 'breadth': filterValues = currValues.map(value => value.code)
                 break;
             default: break
         }
@@ -117,9 +97,12 @@ export default function SearchBar(props) {
     }
 
     return (
-        <section className="container flex gap-3 mx-auto mt-3">
-            <div>
+        <section className="container flex flex-col gap-2 mx-auto mt-3">
+            <div className='flex gap-3 w-full max-md:flex-col max-xl:mx-auto max-xl:items-center'>
                 <AsyncSelect
+                    className="basic-multi-select w-full max-sm:w-[326px] max-md:max-w-[487px] lg:w-[750px]"
+                    classNamePrefix="select"
+                    name="courses"
                     isMulti
                     isClearable
                     autoFocus
@@ -127,9 +110,6 @@ export default function SearchBar(props) {
                     backspaceRemovesValue
                     captureMenuScroll
                     closeMenuOnSelect={false}
-                    className="basic-mTypeulti-select w-[700px]"
-                    classNamePrefix="select"
-                    name="courses"
                     value={searchBar.filter(course => props.filters.courses.includes(course.code))}
                     onChange={updateFilters}
                     cacheOptions
@@ -142,10 +122,16 @@ export default function SearchBar(props) {
                         return context === 'value' ? code :
                             (
                                 <div style={{ display: "flex" }}>
-                                    <div className='whitespace-nowrap overflow-x-hidden overflow-ellipsis max-w-full'>
+                                    <div className='max-md:hidden whitespace-nowrap overflow-x-hidden overflow-ellipsis max-w-full'>
                                         <Highlighter
                                             searchWords={[inputValue]}
                                             textToHighlight={`${code}: ${name}`}
+                                        />
+                                    </div>
+                                    <div className='md:hidden whitespace-nowrap overflow-x-hidden overflow-ellipsis max-w-full'>
+                                        <Highlighter
+                                            searchWords={[inputValue]}
+                                            textToHighlight={`${code}`}
                                         />
                                     </div>
                                     <div style={{ marginLeft: "auto" }}>
@@ -168,24 +154,26 @@ export default function SearchBar(props) {
                     placeholder="Search Courses..."
                     noOptionsMessage={() => "No Courses Found"}
                 />
-                <Select
-                    className="basic-multi-select w-44"
-                    classNamePrefix="select"
-                    name="type"
-                    components={{ IndicatorSeparator: () => null }}
-                    options={searchTypes}
-                    value={searchTypes.filter(type => type.value === props.filters.type)}
-                    defaultValue={searchTypes[1]}
-                    placeholder="Type"
-                    onChange={updateFilters}
-                />
-                <button className="h-10 rounded-full bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" onClick={() => props.updatePreferences("showfilters")}>
-                    <FontAwesomeIcon icon={faSliders} />
-                    <span className='ml-2 max-lg:hidden'>Filters</span>
-                </button>
+                <div className='flex gap-3'>
+                    <Select
+                        className="basic-multi-select w-full max-sm:w-56 max-md:w-96 md:w-44"
+                        classNamePrefix="select"
+                        name="type"
+                        components={{ IndicatorSeparator: () => null }}
+                        options={searchTypes}
+                        value={searchTypes.filter(type => type.value === props.filters.type)}
+                        defaultValue={searchTypes[1]}
+                        placeholder="Type"
+                        onChange={updateFilters}
+                    />
+                    <button className="flex items-center h-10 rounded-full bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" onClick={() => props.updatePreferences("showfilters")}>
+                        <FontAwesomeIcon icon={faSliders} />
+                        <span className='ml-2'>Filters</span>
+                    </button>
+                </div>
             </div>
             {props.preferences.showfilters &&
-                <div>
+                <div className='flex gap-3 max-md:flex-col'>
                     <Select
                         className="basic-multi-select w-44"
                         classNamePrefix="select"
@@ -202,10 +190,42 @@ export default function SearchBar(props) {
                         classNamePrefix="select"
                         name="campus"
                         components={{ IndicatorSeparator: () => null }}
+                        options={campuses}
+                        value={campuses.filter(course => props.filters.campus.includes(course.code))}
+                        defaultValue={searchTypes[1]}
+                        placeholder="Campus"
+                        onChange={updateFilters}
+                    />
+                    <Select
+                        className="basic-multi-select w-44"
+                        classNamePrefix="select"
+                        name="year"
+                        components={{ IndicatorSeparator: () => null }}
                         options={searchTypes}
                         value={searchTypes.filter(type => type.value === props.filters.type)}
                         defaultValue={searchTypes[1]}
-                        placeholder="Campus"
+                        placeholder="Level"
+                        onChange={updateFilters}
+                    />
+                    <Select
+                        className="basic-multi-select w-44"
+                        classNamePrefix="select"
+                        name="semesters"
+                        components={{ IndicatorSeparator: () => null }}
+                        options={semesters}
+                        value={semesters.filter(type => type.value === props.filters.type)}
+                        placeholder="Semesters"
+                        onChange={updateFilters}
+                    />
+                    <Select
+                        className="basic-multi-select w-44"
+                        classNamePrefix="select"
+                        name="breadth"
+                        components={{ IndicatorSeparator: () => null }}
+                        options={searchTypes}
+                        value={searchTypes.filter(type => type.value === props.filters.type)}
+                        defaultValue={searchTypes[1]}
+                        placeholder="Breadth REQ"
                         onChange={updateFilters}
                     />
                 </div>

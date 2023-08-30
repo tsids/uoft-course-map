@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 
 function App() {
   const [filters, setFilters] = useState(JSON.parse(localStorage.getItem("filters")) || {
-    courses: ['CSC108H5', 'MAT202H5', 'MAT347H5'],
+    courses: [],
     type: "",
     field: [],
     campus: [],
@@ -50,7 +50,7 @@ function App() {
 
   return (
     // <main className='max-w-2xl mx-auto my-0 p-8'>
-    <main className={`${preferences.darkMode ? "dark" : ""}`}>
+    <main className={`${preferences.darkMode ? "dark" : "bg-[#d7d8dd]"} h-screen`}>
       <Nav preferences={preferences} updatePreferences={updatePreferences} />
       <SearchBar filters={filters} setFilters={setFilters} preferences={preferences} updatePreferences={updatePreferences} />
       <Map />

@@ -26,5 +26,6 @@ dist-ssr
 backend/*
 **/.*
 postRequisiteFinder.js
+options.js
 !.gitignore
 
