@@ -66,10 +66,10 @@ export default function SearchBar(props) {
     const [fields, setFields] = useState([])
 
     useEffect(() => {
-        axios.get('/api/searches')
+        axios.get('http://localhost:4000/api/searches')
             .then(res => setCourses(res.data))
             .catch(err => console.log(err))
-        axios.get('/api/fields')
+        axios.get('http://localhost:4000/api/fields')
             .then(res => setFields(Object.values(res.data.reduce((acc, curr) => (acc[curr.department.code] = curr.department, acc), {}))))
             .catch(err => console.log(err))
     }, [])
