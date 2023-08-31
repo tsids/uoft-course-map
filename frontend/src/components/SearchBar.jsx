@@ -178,6 +178,7 @@ export default function SearchBar(props) {
                         isClearable
                         hideSelectedOptions
                         backspaceRemovesValue
+                        closeMenuOnSelect={false}
                         components={{ DropdownIndicator }}
                         formatOptionLabel={({ code, name }, { context }) => (context === 'value' ? code : name)}
                         options={fields}
@@ -196,7 +197,7 @@ export default function SearchBar(props) {
                         isSearchable={false}
                         isClearable
                         hideSelectedOptions
-                        backspaceRemovesValue
+                        closeMenuOnSelect={false}
                         components={{ DropdownIndicator }}
                         options={campuses}
                         value={campuses.filter(item => props.filters.campus.includes(item.value))}
@@ -212,7 +213,7 @@ export default function SearchBar(props) {
                         isClearable
                         isSearchable={false}
                         hideSelectedOptions
-                        backspaceRemovesValue
+                        closeMenuOnSelect={false}
                         components={{ DropdownIndicator }}
                         options={year}
                         value={year.filter(item => props.filters.year.includes(item.value))}
@@ -228,7 +229,7 @@ export default function SearchBar(props) {
                         isClearable
                         isSearchable={false}
                         hideSelectedOptions
-                        backspaceRemovesValue
+                        closeMenuOnSelect={false}
                         components={{ DropdownIndicator }}
                         formatOptionLabel={({ value, label }, { context }) => (context === 'value' ? value : label)}
                         options={semesters}
@@ -245,6 +246,7 @@ export default function SearchBar(props) {
                         isClearable
                         hideSelectedOptions
                         backspaceRemovesValue
+                        closeMenuOnSelect={false}
                         components={{ DropdownIndicator }}
                         options={groupedBreadth}
                         value={breadth.filter(item => props.filters.breadth.includes(item.value))}
