@@ -23,11 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 
-backend/*
+./backend/*
 **/.*
-postRequisiteFinder.js
 options.js
 *.jpg
 !.gitignore
 *.txt
-

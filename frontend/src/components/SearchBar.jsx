@@ -59,17 +59,16 @@ const MenuList = props => {
     }
 }
 
-
 export default function SearchBar(props) {
 
     const [courses, setCourses] = useState([])
     const [fields, setFields] = useState([])
 
     useEffect(() => {
-        axios.get('http://localhost:4000/api/searches')
+        axios.get(`${import.meta.env.VITE_API_URL}/api/searches`)
             .then(res => setCourses(res.data))
             .catch(err => console.log(err))
-        axios.get('http://localhost:4000/api/fields')
+        axios.get(`${import.meta.env.VITE_API_URL}/api/fields`)
             .then(res => setFields(Object.values(res.data.reduce((acc, curr) => (acc[curr.department.code] = curr.department, acc), {}))))
             .catch(err => console.log(err))
     }, [])
