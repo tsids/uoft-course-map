@@ -93,41 +93,28 @@ export function SettingsPanel({
 
           <div className="flex flex-col gap-0.5">
             <SettingCheckbox
-              label="Show courses with no prerequisites"
-              description="Highlight entry-level courses"
+              label="Highlight courses with no prerequisites"
+              description="Highlight entry-level courses."
               checked={settings.showNoPrerequisites}
               onChange={(showNoPrerequisites) => onSettingsChange({ showNoPrerequisites })}
             />
             <SettingCheckbox
-              label="Show postrequisites"
-              description="Display downstream course links"
-              checked={settings.showPostrequisites}
-              onChange={(showPostrequisites) => onSettingsChange({ showPostrequisites })}
-            />
-            <SettingCheckbox
-              label="Show corequisites"
-              description="Display dashed corequisite edges"
-              checked={settings.showCorequisites}
-              onChange={(showCorequisites) => onSettingsChange({ showCorequisites })}
-            />
-            <SettingCheckbox
-              label="Show exclusions"
-              description="Display mutual exclusion links"
-              checked={settings.showExclusions}
-              onChange={(showExclusions) => onSettingsChange({ showExclusions })}
+              label="Show prerequisites"
+              description="Show the prerequisite courses of your selected courses."
+              checked={settings.showPrerequisites}
+              onChange={(showPrerequisites) => onSettingsChange({ showPrerequisites })}
             />
             <SettingCheckbox
               label="Highlight prerequisite path"
-              description="Emphasize selected course chain"
+              description="Highlight the prerequisite path of your selected courses."
               checked={settings.highlightPath}
               onChange={(highlightPath) => onSettingsChange({ highlightPath })}
             />
-            <SettingCheckbox
+            {/* <SettingCheckbox
               label="Engineering student"
-              description="Apply engineering enrolment restrictions"
               checked={settings.engineeringStudent}
               onChange={(engineeringStudent) => onSettingsChange({ engineeringStudent })}
-            />
+            /> */}
           </div>
         </div>
       )}

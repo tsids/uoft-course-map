@@ -1,290 +1,353 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { GraphEdge, GraphNode } from "../data/mockGraph";
+import {
+  Background,
+  Controls,
+  ReactFlow,
+  type Edge,
+  type EdgeTypes,
+  type Node,
+  type NodeTypes,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { BoolGraphNode, GraphEdge, GraphNode } from "../types/graph";
 import type { SettingsState } from "../types/filters";
+import { layoutGraph } from "../utils/graphLayout";
+import { buildNodeRoleMap, isBoolNodeVisible, isNodeVisible } from "../utils/nodeVisibility";
+import { BoolNode } from "./BoolNode";
+import { CourseEdge } from "./CourseEdge";
+import { CourseNode } from "./CourseNode";
 
 type CourseGraphProps = {
   nodes: GraphNode[];
+  boolNodes: BoolGraphNode[];
+  ghostNodes: GraphNode[];
   edges: GraphEdge[];
   settings: SettingsState;
   selectedNodeId: string | null;
   theme: "light" | "dark";
   onSelectNode: (id: string | null) => void;
+  onNodeDoubleClick?: (id: string) => void;
+  onOpenCourseInfo?: (code: string) => void;
 };
 
-type Viewport = {
-  x: number;
-  y: number;
-  scale: number;
+const nodeTypes: NodeTypes = {
+  course: CourseNode,
+  bool: BoolNode,
 };
 
-const MIN_SCALE = 0.35;
-const MAX_SCALE = 2.5;
-const NODE_WIDTH = 180;
-const NODE_HEIGHT = 64;
+const edgeTypes: EdgeTypes = {
+  course: CourseEdge,
+};
 
-function getGraphCenter(nodes: GraphNode[]) {
-  if (nodes.length === 0) return null;
+function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean, dimmed: boolean) {
+  const base = highlighted ? 2.5 : 1.5;
+  const opacity = dimmed ? 0.15 : highlighted ? 1 : DEFAULT_EDGE_OPACITY;
 
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-
-  for (const node of nodes) {
-    minX = Math.min(minX, node.x);
-    minY = Math.min(minY, node.y);
-    maxX = Math.max(maxX, node.x + NODE_WIDTH);
-    maxY = Math.max(maxY, node.y + NODE_HEIGHT);
+  if (kind === "corequisite") {
+    return {
+      stroke: dark ? "#60a5fa" : "#2563eb",
+      strokeWidth: base,
+      strokeDasharray: "6 4",
+      opacity,
+    };
   }
-
-  return {
-    x: (minX + maxX) / 2,
-    y: (minY + maxY) / 2,
-  };
+  if (kind === "exclusion") {
+    return {
+      stroke: dark ? "#f87171" : "#dc2626",
+      strokeWidth: base,
+      strokeDasharray: "4 4",
+      opacity,
+    };
+  }
+  if (kind === "postrequisite") {
+    return {
+      stroke: dark ? "#a78bfa" : "#7c3aed",
+      strokeWidth: base,
+      opacity,
+    };
+  }
+  return { stroke: dark ? "#94a3b8" : "#64748b", strokeWidth: base, opacity };
 }
 
-function edgeColor(kind: GraphEdge["kind"], dark: boolean) {
-  if (kind === "corequisite") return dark ? "#60a5fa" : "#2563eb";
-  if (kind === "postrequisite") return dark ? "#a78bfa" : "#7c3aed";
-  if (kind === "exclusion") return dark ? "#f87171" : "#dc2626";
-  return dark ? "#94a3b8" : "#64748b";
-}
+const DEFAULT_EDGE_OPACITY = 0.6;
 
-function getPrerequisiteAncestors(
+function getPrerequisitePath(
   nodeId: string,
   edges: GraphEdge[],
+  kinds: ReadonlySet<GraphEdge["kind"]> = new Set(["postrequisite"]),
 ): Set<string> {
-  const ancestors = new Set<string>();
+  const reachable = new Set<string>([nodeId]);
   const stack = [nodeId];
 
   while (stack.length > 0) {
     const current = stack.pop()!;
     for (const edge of edges) {
-      if (edge.kind !== "prerequisite" || edge.to !== current) continue;
-      if (ancestors.has(edge.from)) continue;
-      ancestors.add(edge.from);
+      if (edge.to !== current) continue;
+      if (!kinds.has(edge.kind)) continue;
+      if (reachable.has(edge.from)) continue;
+      reachable.add(edge.from);
       stack.push(edge.from);
     }
   }
 
-  return ancestors;
+  return reachable;
 }
 
 export function CourseGraph({
   nodes,
+  boolNodes,
+  ghostNodes,
   edges,
   settings,
   selectedNodeId,
   theme,
   onSelectNode,
+  onNodeDoubleClick,
+  onOpenCourseInfo,
 }: CourseGraphProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const hasCenteredRef = useRef(false);
-  const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, scale: 1 });
-  const dragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(
-    null,
-  );
+  const dark = theme === "dark";
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [viewportWidth, setViewportWidth] = useState(0);
+  const allNodes = useMemo(() => [...nodes, ...ghostNodes], [nodes, ghostNodes]);
 
-  useLayoutEffect(() => {
-    if (hasCenteredRef.current) return;
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+    const update = () => {
+      // Round to reduce churn so a re-layout only happens on meaningful resizes.
+      const width = Math.round(element.clientWidth / 50) * 50;
+      setViewportWidth((prev) => (prev === width ? prev : width));
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
-    const container = containerRef.current;
-    const center = getGraphCenter(nodes);
-    if (!container || !center) return;
+  const hoverPathNodeId = hoveredNodeId;
+  const selectionPathNodeId = settings.highlightPath ? selectedNodeId : null;
 
-    const { width, height } = container.getBoundingClientRect();
-    setViewport({
-      scale: 1,
-      x: width / 2 - center.x,
-      y: height / 2 - center.y,
+  const pathEdgeKinds = useMemo(() => {
+    const kinds = new Set<GraphEdge["kind"]>(["postrequisite"]);
+    if (settings.showPrerequisites) {
+      kinds.add("prerequisite");
+    }
+    return kinds;
+  }, [settings.showPrerequisites]);
+
+  const hoverHighlightedNodeIds = useMemo(() => {
+    if (!hoverPathNodeId) return new Set<string>();
+    return getPrerequisitePath(hoverPathNodeId, edges, pathEdgeKinds);
+  }, [edges, hoverPathNodeId, pathEdgeKinds]);
+
+  const selectionHighlightedNodeIds = useMemo(() => {
+    if (!selectionPathNodeId) return new Set<string>();
+    return getPrerequisitePath(selectionPathNodeId, edges, pathEdgeKinds);
+  }, [edges, pathEdgeKinds, selectionPathNodeId]);
+
+  const roleMap = useMemo(() => buildNodeRoleMap(allNodes, edges), [allNodes, edges]);
+
+  const nodeVisibility = useMemo(() => {
+    const map = new Map<string, boolean>();
+    for (const node of allNodes) {
+      map.set(node.id, isNodeVisible(node, settings, roleMap));
+    }
+    for (const boolNode of boolNodes) {
+      map.set(boolNode.id, isBoolNodeVisible(boolNode.id, settings, edges));
+    }
+    return map;
+  }, [allNodes, boolNodes, edges, settings.showPrerequisites]);
+
+  const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
+    const laidOut = layoutGraph(allNodes, boolNodes, edges, {
+      nodeVisibility,
+      settings,
+      viewportWidth: viewportWidth || undefined,
     });
-    hasCenteredRef.current = true;
-  }, [nodes]);
+    const isHovering = hoverPathNodeId !== null;
 
-  const onPointerDown = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      if ((event.target as HTMLElement).closest("[data-course-node]")) return;
-      dragRef.current = {
-        startX: event.clientX,
-        startY: event.clientY,
-        originX: viewport.x,
-        originY: viewport.y,
-      };
-      event.currentTarget.setPointerCapture(event.pointerId);
-    },
-    [viewport.x, viewport.y],
-  );
+    const styledNodes: Node[] = laidOut.nodes.map((node) => {
+      const visible = nodeVisibility.get(node.id) ?? false;
+      const hoverHighlighted = hoverHighlightedNodeIds.has(node.id);
+      const selectionHighlighted = selectionHighlightedNodeIds.has(node.id);
+      const highlighted = hoverHighlighted || selectionHighlighted;
+      const dimmed = isHovering && !hoverHighlighted && node.type === "course";
 
-  const onPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragRef.current) return;
-    const dx = event.clientX - dragRef.current.startX;
-    const dy = event.clientY - dragRef.current.startY;
-    setViewport((current) => ({
-      ...current,
-      x: dragRef.current!.originX + dx,
-      y: dragRef.current!.originY + dy,
-    }));
-  }, []);
+      if (node.type === "bool") {
+        const boolDimmed = isHovering && !hoverHighlighted;
+        return {
+          ...node,
+          zIndex: 10,
+          style: {
+            opacity: visible ? (boolDimmed ? 0.35 : 1) : 0,
+            pointerEvents: visible ? "auto" : "none",
+          },
+          selectable: false,
+          focusable: visible,
+          data: {
+            ...(node.data as object),
+            highlighted: visible && highlighted,
+            visible,
+          },
+        };
+      }
 
-  const onPointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    dragRef.current = null;
-    event.currentTarget.releasePointerCapture(event.pointerId);
-  }, []);
-
-  const onWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const pointerX = event.clientX - rect.left;
-    const pointerY = event.clientY - rect.top;
-    const zoomFactor = event.deltaY < 0 ? 1.08 : 0.92;
-
-    setViewport((current) => {
-      const nextScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, current.scale * zoomFactor));
-      const scaleRatio = nextScale / current.scale;
       return {
-        scale: nextScale,
-        x: pointerX - (pointerX - current.x) * scaleRatio,
-        y: pointerY - (pointerY - current.y) * scaleRatio,
+        ...node,
+        style: {
+          opacity: visible ? 1 : 0,
+          pointerEvents: visible ? "auto" : "none",
+        },
+        selectable: visible,
+        focusable: visible,
+        data: {
+          ...(node.data as object),
+          selected: visible && node.id === selectedNodeId,
+          highlighted: visible && highlighted,
+          hovered: visible && node.id === hoverPathNodeId,
+          dimmed: visible && dimmed,
+          showNoPrerequisites: settings.showNoPrerequisites,
+          visible,
+          onOpenInfo: onOpenCourseInfo,
+        },
       };
     });
+
+    const styledEdges: Edge[] = laidOut.edges.map((edge) => {
+      const kind = (edge.data as { kind?: GraphEdge["kind"] } | undefined)?.kind ?? "postrequisite";
+      const sourceVisible = nodeVisibility.get(edge.source) ?? false;
+      const targetVisible = nodeVisibility.get(edge.target) ?? false;
+      const visible = sourceVisible && targetVisible;
+      const hiddenByCompression = laidOut.hiddenEdgeKeys.has(edge.id);
+      const hoverHighlighted =
+        isHovering &&
+        visible &&
+        pathEdgeKinds.has(kind) &&
+        hoverHighlightedNodeIds.has(edge.source) &&
+        hoverHighlightedNodeIds.has(edge.target);
+      const selectionHighlighted =
+        selectionPathNodeId !== null &&
+        visible &&
+        pathEdgeKinds.has(kind) &&
+        selectionHighlightedNodeIds.has(edge.source) &&
+        selectionHighlightedNodeIds.has(edge.target);
+      const highlighted = hoverHighlighted || selectionHighlighted;
+      const dimmed = isHovering && !hoverHighlighted;
+
+      return {
+        ...edge,
+        hidden: !visible || hiddenByCompression,
+        style: {
+          ...edgeStyle(kind, dark, highlighted, dimmed),
+          opacity: !visible || hiddenByCompression ? 0 : dimmed ? 0.15 : highlighted ? 1 : DEFAULT_EDGE_OPACITY,
+        },
+        markerEnd:
+          !visible || hiddenByCompression
+            ? undefined
+            : kind === "exclusion"
+              ? { type: "arrowclosed" as const, color: dark ? "#f87171" : "#dc2626" }
+              : { type: "arrowclosed" as const, color: dark ? "#a78bfa" : "#7c3aed" },
+        zIndex: highlighted ? 2 : 0,
+      };
+    });
+
+    return { nodes: styledNodes, edges: styledEdges };
+  }, [
+    allNodes,
+    boolNodes,
+    dark,
+    edges,
+    hoverHighlightedNodeIds,
+    hoverPathNodeId,
+    nodeVisibility,
+    onOpenCourseInfo,
+    selectedNodeId,
+    selectionHighlightedNodeIds,
+    selectionPathNodeId,
+    settings,
+    pathEdgeKinds,
+    viewportWidth,
+  ]);
+
+  const onNodeClick = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      const visible = (node.data as { visible?: boolean }).visible ?? true;
+      if (!visible) return;
+      onSelectNode(selectedNodeId === node.id ? null : node.id);
+    },
+    [onSelectNode, selectedNodeId],
+  );
+
+  const onNodeDoubleClickHandler = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      const visible = (node.data as { visible?: boolean }).visible ?? true;
+      if (!visible) return;
+      onNodeDoubleClick?.(node.id);
+    },
+    [onNodeDoubleClick],
+  );
+
+  const onNodeMouseEnter = useCallback((_: React.MouseEvent, node: Node) => {
+    const visible = (node.data as { visible?: boolean }).visible ?? true;
+    if (!visible || node.type !== "course") return;
+    setHoveredNodeId(node.id);
   }, []);
 
-  const visibleEdges = edges.filter((edge) => {
-    if (edge.kind === "corequisite" && !settings.showCorequisites) return false;
-    if (edge.kind === "postrequisite" && !settings.showPostrequisites) return false;
-    if (edge.kind === "exclusion" && !settings.showExclusions) return false;
-    return true;
-  });
+  const onNodeMouseLeave = useCallback(() => {
+    setHoveredNodeId(null);
+  }, []);
 
-  const highlightedNodeIds = useMemo(() => {
-    if (!settings.highlightPath || !selectedNodeId) return new Set<string>();
-    const ancestors = getPrerequisiteAncestors(selectedNodeId, edges);
-    ancestors.add(selectedNodeId);
-    return ancestors;
-  }, [edges, selectedNodeId, settings.highlightPath]);
+  const onPaneClick = useCallback(() => {
+    onSelectNode(null);
+  }, [onSelectNode]);
 
-  const isEdgeHighlighted = useCallback(
-    (edge: GraphEdge) => {
-      if (!settings.highlightPath || !selectedNodeId) return false;
-      return highlightedNodeIds.has(edge.from) && highlightedNodeIds.has(edge.to);
-    },
-    [highlightedNodeIds, selectedNodeId, settings.highlightPath],
-  );
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.textContent = `
+      .react-flow__controls button {
+        background: ${dark ? "#252a33" : "#ffffff"};
+        border-color: ${dark ? "#475569" : "#e2e8f0"};
+        color: ${dark ? "#e2e8f0" : "#334155"};
+      }
+      .react-flow__controls button:hover {
+        background: ${dark ? "#1f242d" : "#f8fafc"};
+      }
+    `;
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, [dark]);
+
+  if (allNodes.length === 0) {
+    return (
+      <div
+        ref={containerRef}
+        className="absolute inset-0 bg-[#f4f6f8] dark:bg-[#1a1d23]"
+      />
+    );
+  }
 
   return (
-    <div
-      ref={containerRef}
-      className="absolute inset-0 cursor-grab overflow-hidden bg-[#f4f6f8] active:cursor-grabbing dark:bg-[#1a1d23]"
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      onWheel={onWheel}
-    >
-      <div
-        className="pointer-events-none absolute inset-0 opacity-60 dark:opacity-30"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, rgba(148,163,184,0.25) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.25) 1px, transparent 1px)",
-          backgroundSize: `${40 * viewport.scale}px ${40 * viewport.scale}px`,
-          backgroundPosition: `${viewport.x}px ${viewport.y}px`,
-        }}
-      />
-
-      <svg className="absolute inset-0 h-full w-full">
-        <g transform={`translate(${viewport.x} ${viewport.y}) scale(${viewport.scale})`}>
-          {visibleEdges.map((edge) => {
-            const from = nodes.find((node) => node.id === edge.from);
-            const to = nodes.find((node) => node.id === edge.to);
-            if (!from || !to) return null;
-
-            const dark = theme === "dark";
-            const midX = (from.x + to.x) / 2;
-            const midY = (from.y + to.y) / 2 - 30;
-
-            return (
-              <g key={`${edge.from}-${edge.to}-${edge.kind}`}>
-                <path
-                  d={`M ${from.x + 90} ${from.y + 24} Q ${midX + 90} ${midY + 24} ${to.x + 90} ${to.y + 24}`}
-                  fill="none"
-                  stroke={edgeColor(edge.kind, dark)}
-                  strokeWidth={
-                    isEdgeHighlighted(edge) ? 3 : edge.kind === "corequisite" ? 2 : 1.5
-                  }
-                  strokeDasharray={
-                    edge.kind === "corequisite"
-                      ? "6 4"
-                      : edge.kind === "exclusion"
-                        ? "4 4"
-                        : undefined
-                  }
-                  strokeOpacity={isEdgeHighlighted(edge) ? 1 : edge.kind === "postrequisite" ? 0.7 : 1}
-                  markerEnd={edge.kind === "exclusion" ? undefined : "url(#arrowhead)"}
-                />
-              </g>
-            );
-          })}
-
-          <defs>
-            <marker
-              id="arrowhead"
-              markerWidth="8"
-              markerHeight="8"
-              refX="6"
-              refY="3"
-              orient="auto"
-            >
-              <polygon points="0 0, 8 3, 0 6" className="fill-slate-500 dark:fill-slate-400" />
-            </marker>
-          </defs>
-        </g>
-      </svg>
-
-      <div
-        className="absolute left-0 top-0 origin-top-left"
-        style={{
-          transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
-        }}
+    <div ref={containerRef} className="absolute inset-0 bg-[#f4f6f8] dark:bg-[#1a1d23]">
+      <ReactFlow
+        nodes={flowNodes}
+        edges={flowEdges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        onNodeClick={onNodeClick}
+        onNodeDoubleClick={onNodeDoubleClickHandler}
+        onNodeMouseEnter={onNodeMouseEnter}
+        onNodeMouseLeave={onNodeMouseLeave}
+        onPaneClick={onPaneClick}
+        fitView
+        fitViewOptions={{ padding: 0.25 }}
+        minZoom={0.2}
+        maxZoom={2}
+        proOptions={{ hideAttribution: true }}
       >
-        {nodes.map((node) => {
-          const selected = selectedNodeId === node.id;
-          const onPath = highlightedNodeIds.has(node.id);
-          return (
-            <button
-              key={node.id}
-              type="button"
-              data-course-node
-              onClick={() => onSelectNode(selected ? null : node.id)}
-              className={[
-                "absolute w-[180px] rounded-lg border px-3 py-2 text-left shadow-sm transition",
-                "bg-white hover:border-blue-400 dark:bg-[#252a33] dark:hover:border-blue-500",
-                selected
-                  ? "border-blue-500 ring-2 ring-blue-400/40"
-                  : onPath
-                    ? "border-emerald-400 ring-1 ring-emerald-400/30"
-                    : "border-slate-200 dark:border-slate-700",
-                !node.hasPrerequisites && settings.showNoPrerequisites
-                  ? "outline outline-2 outline-amber-400/70"
-                  : "",
-              ].join(" ")}
-              style={{ left: node.x, top: node.y }}
-            >
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                {node.code}
-              </div>
-              <div className="mt-0.5 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">
-                {node.name}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="pointer-events-none absolute bottom-4 right-4 rounded-md border border-slate-200 bg-white/90 px-2 py-1 text-xs text-slate-500 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-[#252a33]/90 dark:text-slate-400">
-        Drag to pan · Scroll to zoom · {Math.round(viewport.scale * 100)}%
-      </div>
+        <Background gap={20} color={dark ? "#334155" : "#cbd5e1"} />
+        <Controls showInteractive={false} />
+      </ReactFlow>
     </div>
   );
 }
