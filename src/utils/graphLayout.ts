@@ -1,14 +1,13 @@
-import dagre from "@dagrejs/dagre";
+import ELK, { type ElkNode, type ElkPort, type ElkExtendedEdge } from "elkjs/lib/elk.bundled.js";
 import type { Edge, Node } from "@xyflow/react";
-import { defaultSettings, type SettingsState } from "../types/filters";
 import type { BoolGraphNode, GraphEdge, GraphNode } from "../types/graph";
+import { roundedPath, type Point } from "./edgeRouting";
 
 const COURSE_NODE_WIDTH = 180;
 const COURSE_NODE_HEIGHT = 72;
 const BOOL_NODE_WIDTH = 48;
 const BOOL_NODE_HEIGHT = 32;
-const NODE_SEP = 40;
-const EDGE_SEP = 20;
+const NODE_SEP = 32;
 const RANK_SEP = 72;
 const MARGIN_X = 32;
 const MARGIN_Y = 32;
@@ -16,14 +15,15 @@ const ISOLATED_GRID_MIN_COLUMNS = 6;
 const ISOLATED_GRID_MAX_COLUMNS = 14;
 /** Fallback drawing width (px) used when the caller doesn't provide the viewport size. */
 const DEFAULT_MAX_WIDTH = 1400;
-/** Vertical gap between wrapped rows that belong to the same rank. */
-const WRAP_ROW_GAP = RANK_SEP;
+const DEFAULT_MAX_HEIGHT = 900;
+
+type Side = "north" | "south" | "east" | "west";
 
 type LayoutOptions = {
   nodeVisibility: Map<string, boolean>;
-  settings?: SettingsState;
-  /** Available drawing width in px; wide ranks wrap to stay within it. */
+  /** Available drawing width in px; used to size the isolated-node grid. */
   viewportWidth?: number;
+  viewportHeight?: number;
 };
 
 type LayoutResult = {
@@ -32,8 +32,14 @@ type LayoutResult = {
   hiddenEdgeKeys: Set<string>;
 };
 
+const elk = new ELK();
+
 function edgeKey(edge: Pick<GraphEdge, "from" | "to" | "kind">) {
   return `${edge.from}|${edge.to}|${edge.kind}`;
+}
+
+function portId(nodeId: string, side: Side) {
+  return `${nodeId}::${side}`;
 }
 
 function nodeDimensions(id: string, boolNodeIds: Set<string>) {
@@ -43,12 +49,39 @@ function nodeDimensions(id: string, boolNodeIds: Set<string>) {
   return { width: COURSE_NODE_WIDTH, height: COURSE_NODE_HEIGHT };
 }
 
-function nodeCenterX(id: string, x: number, boolNodeIds: Set<string>) {
-  const { width } = nodeDimensions(id, boolNodeIds);
-  return x + width / 2;
+/**
+ * Fixed connection points. Course nodes expose all four; bool (AND/OR) nodes
+ * only expose top (input) and bottom (output). Because ports are FIXED_POS,
+ * every edge sharing a side funnels through the same point, so a node never
+ * sprays edges from scattered spots along an edge.
+ */
+function nodePorts(id: string, boolNodeIds: Set<string>): ElkPort[] {
+  const { width, height } = nodeDimensions(id, boolNodeIds);
+  const north: ElkPort = { id: portId(id, "north"), x: width / 2, y: 0, width: 0, height: 0 };
+  const south: ElkPort = { id: portId(id, "south"), x: width / 2, y: height, width: 0, height: 0 };
+  if (boolNodeIds.has(id)) {
+    return [north, south];
+  }
+  return [
+    north,
+    south,
+    { id: portId(id, "east"), x: width, y: height / 2, width: 0, height: 0 },
+    { id: portId(id, "west"), x: 0, y: height / 2, width: 0, height: 0 },
+  ];
 }
 
-function isLayoutEdge(edge: GraphEdge, settings: SettingsState): boolean {
+/** Which fixed ports an edge attaches to, given its kind. */
+function edgePorts(kind: GraphEdge["kind"]): { source: Side; target: Side } {
+  // Exclusions link mutually exclusive courses that sit on the same rank, so
+  // route them side-to-side. Everything else flows down the DAG: out the
+  // bottom of the prerequisite, into the top of the dependent course.
+  if (kind === "exclusion") {
+    return { source: "east", target: "west" };
+  }
+  return { source: "south", target: "north" };
+}
+
+function isLayoutEdge(edge: GraphEdge): boolean {
   switch (edge.kind) {
     case "postrequisite":
     case "corequisite":
@@ -56,8 +89,7 @@ function isLayoutEdge(edge: GraphEdge, settings: SettingsState): boolean {
       // Chains and AND/OR connectors are always shown for the graph.
       return true;
     case "prerequisite":
-      // Only the selected courses' own upward prerequisite edges are gated.
-      return settings.showPrerequisites;
+      return true;
     default:
       return false;
   }
@@ -67,8 +99,9 @@ function isLayoutEdge(edge: GraphEdge, settings: SettingsState): boolean {
 function compressPassthroughToBool(
   edges: GraphEdge[],
   boolNodeIds: Set<string>,
-): { layoutEdges: GraphEdge[]; hiddenEdgeKeys: Set<string> } {
+): { syntheticEdges: GraphEdge[]; hiddenEdgeKeys: Set<string> } {
   const hiddenEdgeKeys = new Set<string>();
+  const syntheticEdges: GraphEdge[] = [];
   const postEdges = edges.filter((edge) => edge.kind === "postrequisite");
 
   const outgoing = new Map<string, GraphEdge[]>();
@@ -77,8 +110,6 @@ function compressPassthroughToBool(
     outgoing.set(edge.from, [...(outgoing.get(edge.from) ?? []), edge]);
     incoming.set(edge.to, [...(incoming.get(edge.to) ?? []), edge]);
   }
-
-  const layoutEdges = [...postEdges];
 
   for (const orId of boolNodeIds) {
     const inputsToOr = (incoming.get(orId) ?? []).filter((edge) => !boolNodeIds.has(edge.from));
@@ -98,267 +129,13 @@ function compressPassthroughToBool(
       const ancestorId = intoPassthrough[0]!.from;
       hiddenEdgeKeys.add(edgeKey({ from: ancestorId, to: passthroughId, kind: "postrequisite" }));
 
-      if (!layoutEdges.some((edge) => edge.from === ancestorId && edge.to === orId)) {
-        layoutEdges.push({ from: ancestorId, to: orId, kind: "postrequisite" });
+      if (!syntheticEdges.some((edge) => edge.from === ancestorId && edge.to === orId)) {
+        syntheticEdges.push({ from: ancestorId, to: orId, kind: "postrequisite" });
       }
     }
   }
 
-  const filteredLayoutEdges = layoutEdges.filter((edge) => !hiddenEdgeKeys.has(edgeKey(edge)));
-
-  return { layoutEdges: filteredLayoutEdges, hiddenEdgeKeys };
-}
-
-function centerBoolNodes(
-  positions: Map<string, { x: number; y: number }>,
-  visualEdges: GraphEdge[],
-  boolNodeIds: Set<string>,
-) {
-  for (const boolId of boolNodeIds) {
-    const position = positions.get(boolId);
-    if (!position) continue;
-
-    const inputs = visualEdges
-      .filter((edge) => edge.to === boolId && edge.kind === "postrequisite")
-      .map((edge) => edge.from);
-    const inputIds = inputs.filter((id) => positions.has(id));
-
-    if (inputIds.length > 0) {
-      const centers = inputIds.map((id) => nodeCenterX(id, positions.get(id)!.x, boolNodeIds));
-      const centerX = (Math.min(...centers) + Math.max(...centers)) / 2;
-      positions.set(boolId, { ...position, x: centerX - BOOL_NODE_WIDTH / 2 });
-      continue;
-    }
-
-    const parentEdge = visualEdges.find((edge) => edge.to === boolId);
-    if (parentEdge && positions.has(parentEdge.from)) {
-      const parentCenter = nodeCenterX(
-        parentEdge.from,
-        positions.get(parentEdge.from)!.x,
-        boolNodeIds,
-      );
-      positions.set(boolId, { ...position, x: parentCenter - BOOL_NODE_WIDTH / 2 });
-    }
-  }
-}
-
-type Side = "top" | "bottom" | "left" | "right";
-
-type Point = { x: number; y: number };
-
-type AnchorPlan = {
-  edge: Edge;
-  sourceSide: Side;
-  targetSide: Side;
-};
-
-function nodeAnchorPoints(
-  id: string,
-  positions: Map<string, { x: number; y: number }>,
-  boolNodeIds: Set<string>,
-): Record<Side, Point> {
-  const position = positions.get(id) ?? { x: 0, y: 0 };
-  const { width, height } = nodeDimensions(id, boolNodeIds);
-  const centerX = position.x + width / 2;
-  const centerY = position.y + height / 2;
-
-  return {
-    top: { x: centerX, y: position.y },
-    bottom: { x: centerX, y: position.y + height },
-    left: { x: position.x, y: centerY },
-    right: { x: position.x + width, y: centerY },
-  };
-}
-
-function dist(a: Point, b: Point) {
-  return Math.hypot(b.x - a.x, b.y - a.y);
-}
-
-function nodeCenter(
-  id: string,
-  positions: Map<string, { x: number; y: number }>,
-  boolNodeIds: Set<string>,
-): Point {
-  const position = positions.get(id) ?? { x: 0, y: 0 };
-  const { width, height } = nodeDimensions(id, boolNodeIds);
-  return { x: position.x + width / 2, y: position.y + height / 2 };
-}
-
-/**
- * Pick reasonable source/target sides for an orthogonal "L".
- *
- * The previous "closest midpoint" approach often selects `targetSide="left"` for
- * far-apart nodes, even when the edge clearly comes from above (like the spine
- * above a row of courses). We bias the target side based on relative vertical
- * direction so endpoints look intuitive.
- */
-function pickBestSides(
-  sourceId: string,
-  targetId: string,
-  positions: Map<string, { x: number; y: number }>,
-  boolNodeIds: Set<string>,
-): { sourceSide: Side; targetSide: Side } {
-  const sourceCenter = nodeCenter(sourceId, positions, boolNodeIds);
-  const targetCenter = nodeCenter(targetId, positions, boolNodeIds);
-  const dx = targetCenter.x - sourceCenter.x;
-  const dy = targetCenter.y - sourceCenter.y;
-
-  // Strong preference for entering from the top/bottom when there is a clear vertical order.
-  let targetSide: Side;
-  if (dy > 0) targetSide = "top";
-  else if (dy < 0) targetSide = "bottom";
-  else targetSide = dx >= 0 ? "left" : "right";
-
-  // For the source, prefer moving toward the target (right/left), unless it's mostly vertical.
-  const mostlyVertical = Math.abs(dy) > Math.abs(dx) * 0.6;
-  let sourceSide: Side;
-  if (mostlyVertical) {
-    sourceSide = dy >= 0 ? "bottom" : "top";
-  } else {
-    sourceSide = dx >= 0 ? "right" : "left";
-  }
-
-  // Final tie-break: if the heuristic makes something obviously worse in tight cases,
-  // fall back to the closest-pair search while keeping the biased target side fixed.
-  const sourceAnchors = nodeAnchorPoints(sourceId, positions, boolNodeIds);
-  const targetAnchors = nodeAnchorPoints(targetId, positions, boolNodeIds);
-  const preferredDistance = dist(sourceAnchors[sourceSide], targetAnchors[targetSide]);
-
-  const allSides: Side[] = ["top", "bottom", "left", "right"];
-  let bestSource = sourceSide;
-  let bestDist = preferredDistance;
-  for (const candidate of allSides) {
-    const d = dist(sourceAnchors[candidate], targetAnchors[targetSide]);
-    if (d < bestDist) {
-      bestDist = d;
-      bestSource = candidate;
-    }
-  }
-
-  return { sourceSide: bestSource, targetSide };
-}
-
-function anchorOnSide(
-  side: Side,
-  slot: number,
-  total: number,
-  position: { x: number; y: number },
-  width: number,
-  height: number,
-): Point {
-  const ratio = total <= 1 ? 0.5 : (slot + 1) / (total + 1);
-
-  switch (side) {
-    case "top":
-      return { x: position.x + width * ratio, y: position.y };
-    case "bottom":
-      return { x: position.x + width * ratio, y: position.y + height };
-    case "left":
-      return { x: position.x, y: position.y + height * ratio };
-    case "right":
-      return { x: position.x + width, y: position.y + height * ratio };
-  }
-}
-
-function assignEdgeAnchors(
-  flowEdges: Edge[],
-  positions: Map<string, { x: number; y: number }>,
-  boolNodeIds: Set<string>,
-): Edge[] {
-  const plans: AnchorPlan[] = flowEdges.map((edge) => ({
-    edge,
-    ...pickBestSides(edge.source, edge.target, positions, boolNodeIds),
-  }));
-
-  const sourcesWithBoolTargets = new Set<string>();
-  for (const plan of plans) {
-    if (boolNodeIds.has(plan.edge.target)) {
-      sourcesWithBoolTargets.add(plan.edge.source);
-    }
-  }
-
-  const sourceGroups = new Map<string, AnchorPlan[]>();
-  const targetGroups = new Map<string, AnchorPlan[]>();
-
-  for (const plan of plans) {
-    const sourceKey = `${plan.edge.source}|${plan.sourceSide}`;
-    sourceGroups.set(sourceKey, [...(sourceGroups.get(sourceKey) ?? []), plan]);
-
-    const targetKey = `${plan.edge.target}|${plan.targetSide}`;
-    targetGroups.set(targetKey, [...(targetGroups.get(targetKey) ?? []), plan]);
-  }
-
-  const nodeSortKey = (nodeId: string) => nodeCenterX(nodeId, positions.get(nodeId)?.x ?? 0, boolNodeIds);
-
-  for (const group of sourceGroups.values()) {
-    group.sort((a, b) => nodeSortKey(a.edge.target) - nodeSortKey(b.edge.target));
-    group.forEach((plan, slot) => {
-      const position = positions.get(plan.edge.source);
-      if (!position) return;
-      const { width, height } = nodeDimensions(plan.edge.source, boolNodeIds);
-      // When a node fans out into a bool connector (OR/AND), we prefer a single
-      // shared stem out of the source so it doesn't look like multiple arrows
-      // are "going into" the connector due to overlapping first segments.
-      const collapseStem =
-        plan.sourceSide === "bottom" &&
-        group.length > 1 &&
-        !boolNodeIds.has(plan.edge.source) &&
-        sourcesWithBoolTargets.has(plan.edge.source);
-      const anchor = collapseStem
-        ? anchorOnSide(plan.sourceSide, 0, 1, position, width, height)
-        : anchorOnSide(plan.sourceSide, slot, group.length, position, width, height);
-      plan.edge.data = {
-        ...(plan.edge.data as object),
-        sourceAnchor: [anchor.x, anchor.y] as [number, number],
-        sourceSide: plan.sourceSide,
-      };
-    });
-  }
-
-  for (const group of targetGroups.values()) {
-    group.sort((a, b) => nodeSortKey(a.edge.source) - nodeSortKey(b.edge.source));
-    group.forEach((plan, slot) => {
-      const position = positions.get(plan.edge.target);
-      if (!position) return;
-      const { width, height } = nodeDimensions(plan.edge.target, boolNodeIds);
-      const anchor = anchorOnSide(plan.targetSide, slot, group.length, position, width, height);
-      plan.edge.data = {
-        ...(plan.edge.data as object),
-        targetAnchor: [anchor.x, anchor.y] as [number, number],
-        targetSide: plan.targetSide,
-      };
-    });
-  }
-
-  return flowEdges;
-}
-
-function centerRootNodesOverChildren(
-  positions: Map<string, { x: number; y: number }>,
-  visualEdges: GraphEdge[],
-  boolNodeIds: Set<string>,
-) {
-  const incoming = new Map<string, number>();
-  const outgoing = new Map<string, string[]>();
-
-  for (const edge of visualEdges) {
-    if (edge.kind !== "postrequisite") continue;
-    incoming.set(edge.to, (incoming.get(edge.to) ?? 0) + 1);
-    outgoing.set(edge.from, [...(outgoing.get(edge.from) ?? []), edge.to]);
-  }
-
-  for (const [nodeId, position] of positions.entries()) {
-    if (boolNodeIds.has(nodeId)) continue;
-    if ((incoming.get(nodeId) ?? 0) > 0) continue; // not a root in the postrequisite backbone
-
-    const children = (outgoing.get(nodeId) ?? []).filter((childId) => positions.has(childId));
-    if (children.length === 0) continue;
-
-    const centers = children.map((id) => nodeCenterX(id, positions.get(id)!.x, boolNodeIds));
-    const centerX = (Math.min(...centers) + Math.max(...centers)) / 2;
-    const { width } = nodeDimensions(nodeId, boolNodeIds);
-    positions.set(nodeId, { ...position, x: centerX - width / 2 });
-  }
+  return { syntheticEdges, hiddenEdgeKeys };
 }
 
 function hideRedundantFanoutEdgesViaBoolNodes(
@@ -405,100 +182,10 @@ function hideRedundantFanoutEdgesViaBoolNodes(
 }
 
 /**
- * Keep the drawing flowing downward instead of sideways.
- *
- * dagre places every node of a rank on a single horizontal line, so a course
- * with many postrequisites (or a wide prerequisite fan-in) becomes one extremely
- * wide row and the whole graph reads as horizontal. This pass groups nodes by
- * rank (shared center-y) and, whenever a rank is wider than `maxWidth`, wraps it
- * into several stacked rows and pushes every lower rank further down. Ranks that
- * already fit keep dagre's crossing-minimized positions untouched.
- */
-function wrapWideRanks(
-  positions: Map<string, { x: number; y: number }>,
-  ids: string[],
-  boolNodeIds: Set<string>,
-  maxWidth: number,
-) {
-  const byRank = new Map<number, string[]>();
-  for (const id of ids) {
-    const position = positions.get(id);
-    if (!position) continue;
-    const { height } = nodeDimensions(id, boolNodeIds);
-    const centerY = Math.round(position.y + height / 2);
-    byRank.set(centerY, [...(byRank.get(centerY) ?? []), id]);
-  }
-
-  const rankKeys = [...byRank.keys()].sort((a, b) => a - b);
-  let extraOffset = 0;
-
-  for (const key of rankKeys) {
-    const group = byRank.get(key)!;
-
-    // Absorb the downward shift introduced by earlier wrapped ranks.
-    for (const id of group) {
-      const position = positions.get(id)!;
-      positions.set(id, { x: position.x, y: position.y + extraOffset });
-    }
-
-    group.sort(
-      (a, b) =>
-        nodeCenterX(a, positions.get(a)!.x, boolNodeIds) -
-        nodeCenterX(b, positions.get(b)!.x, boolNodeIds),
-    );
-
-    const totalWidth =
-      group.reduce((sum, id) => sum + nodeDimensions(id, boolNodeIds).width, 0) +
-      NODE_SEP * Math.max(0, group.length - 1);
-
-    if (group.length <= 1 || totalWidth <= maxWidth) continue;
-
-    // Greedily pack the rank into rows no wider than maxWidth.
-    const rows: string[][] = [];
-    let current: string[] = [];
-    let currentWidth = 0;
-    for (const id of group) {
-      const width = nodeDimensions(id, boolNodeIds).width;
-      const projected = current.length === 0 ? width : currentWidth + NODE_SEP + width;
-      if (current.length > 0 && projected > maxWidth) {
-        rows.push(current);
-        current = [id];
-        currentWidth = width;
-      } else {
-        current.push(id);
-        currentWidth = projected;
-      }
-    }
-    if (current.length > 0) rows.push(current);
-
-    const centersX = group.map((id) => nodeCenterX(id, positions.get(id)!.x, boolNodeIds));
-    const axisX = (Math.min(...centersX) + Math.max(...centersX)) / 2;
-    const rankCenterY = key + extraOffset;
-    const rowStep =
-      Math.max(...group.map((id) => nodeDimensions(id, boolNodeIds).height)) + WRAP_ROW_GAP;
-
-    rows.forEach((row, rowIndex) => {
-      const rowWidth =
-        row.reduce((sum, id) => sum + nodeDimensions(id, boolNodeIds).width, 0) +
-        NODE_SEP * Math.max(0, row.length - 1);
-      const rowCenterY = rankCenterY + rowIndex * rowStep;
-      let x = axisX - rowWidth / 2;
-      for (const id of row) {
-        const { width, height } = nodeDimensions(id, boolNodeIds);
-        positions.set(id, { x, y: rowCenterY - height / 2 });
-        x += width + NODE_SEP;
-      }
-    });
-
-    extraOffset += (rows.length - 1) * rowStep;
-  }
-}
-
-/**
  * Nodes with no edges at all (e.g. the "show all courses with no prerequisites"
- * flood, which can add hundreds of unconnected courses) would otherwise all land
- * in a single dagre rank and stretch the graph very wide. Instead, pack them into
- * a grid that grows downward, below whatever the connected part of the graph laid out.
+ * flood, which can add hundreds of unconnected courses) are packed into a grid
+ * below the connected part of the graph instead of being handed to ELK, so they
+ * don't stretch the layout arbitrarily wide.
  */
 function layoutIsolatedGrid(
   isolatedNodes: GraphNode[],
@@ -511,8 +198,6 @@ function layoutIsolatedGrid(
   const colWidth = COURSE_NODE_WIDTH + NODE_SEP;
   const rowHeight = COURSE_NODE_HEIGHT + RANK_SEP;
 
-  // Never let the grid grow wider than the viewport: the column count is capped
-  // by how many nodes actually fit across maxWidth.
   const columnsThatFit = Math.max(1, Math.floor((maxWidth + NODE_SEP) / colWidth));
   const desiredColumns = Math.max(
     ISOLATED_GRID_MIN_COLUMNS,
@@ -532,13 +217,19 @@ function layoutIsolatedGrid(
   return positions;
 }
 
-export function layoutGraph(
+/** Absolute polyline for an ELK edge: start point, bend points, end point. */
+function elkEdgePoints(edge: ElkExtendedEdge): Point[] | null {
+  const section = edge.sections?.[0];
+  if (!section) return null;
+  return [section.startPoint, ...(section.bendPoints ?? []), section.endPoint];
+}
+
+export async function layoutGraph(
   nodes: GraphNode[],
   boolNodes: BoolGraphNode[],
   edges: GraphEdge[],
   options: LayoutOptions,
-): LayoutResult {
-  const settings = options.settings ?? defaultSettings;
+): Promise<LayoutResult> {
   const { nodeVisibility } = options;
 
   const layoutNodes = nodes.filter((node) => nodeVisibility.get(node.id));
@@ -551,114 +242,147 @@ export function layoutGraph(
 
   const visibleEdges = edges.filter(
     (edge) =>
-      isLayoutEdge(edge, settings) &&
+      isLayoutEdge(edge) &&
       layoutNodeIds.has(edge.from) &&
       layoutNodeIds.has(edge.to),
   );
 
-  const { layoutEdges, hiddenEdgeKeys: compressedHidden } = compressPassthroughToBool(
+  const { syntheticEdges, hiddenEdgeKeys: compressedHidden } = compressPassthroughToBool(
     visibleEdges,
     boolNodeIds,
   );
-  const redundantHidden = hideRedundantFanoutEdgesViaBoolNodes(visibleEdges, layoutBoolNodes, boolNodeIds);
+  const redundantHidden = hideRedundantFanoutEdgesViaBoolNodes(
+    visibleEdges,
+    layoutBoolNodes,
+    boolNodeIds,
+  );
   const hiddenEdgeKeys = new Set<string>([...compressedHidden, ...redundantHidden]);
 
-  // Nodes with zero edges of any kind (e.g. from "show all no-prerequisite courses")
-  // are excluded from the dagre graph and packed into a downward-growing grid instead,
-  // so they don't stretch a single rank arbitrarily wide.
+  // Edges that are actually drawn: visible, and not collapsed away above.
+  const renderEdges = visibleEdges.filter((edge) => !hiddenEdgeKeys.has(edgeKey(edge)));
+
+  // Nodes with zero edges of any kind are excluded from ELK and gridded below.
   const connectedIds = new Set<string>();
   for (const edge of visibleEdges) {
     connectedIds.add(edge.from);
     connectedIds.add(edge.to);
   }
-  const dagreLayoutNodes = layoutNodes.filter((node) => connectedIds.has(node.id));
+  const elkCourseNodes = layoutNodes.filter((node) => connectedIds.has(node.id));
   const isolatedNodes = layoutNodes.filter((node) => !connectedIds.has(node.id));
 
-  const graph = new dagre.graphlib.Graph();
-  graph.setDefaultEdgeLabel(() => ({}));
-  graph.setGraph({
-    rankdir: "TB",
-    align: "UL",
-    ranker: "network-simplex",
-    nodesep: NODE_SEP,
-    edgesep: EDGE_SEP,
-    ranksep: RANK_SEP,
-    marginx: MARGIN_X,
-    marginy: MARGIN_Y,
-  });
-
-  for (const node of dagreLayoutNodes) {
-    const { width, height } = nodeDimensions(node.id, boolNodeIds);
-    graph.setNode(node.id, { width, height });
-  }
-
-  for (const boolNode of layoutBoolNodes) {
-    const { width, height } = nodeDimensions(boolNode.id, boolNodeIds);
-    graph.setNode(boolNode.id, { width, height });
-  }
-
-  // Feed dagre the full ranking backbone, not just postrequisites. Because every
-  // edge points from the foundational course to the dependent one, top-to-bottom
-  // ranking naturally puts prerequisites above a course and postrequisites below.
-  // Exclusions are omitted since mutually exclusive courses belong on the same level.
-  const rankingEdgeKeys = new Set<string>();
-  const addRankingEdge = (from: string, to: string) => {
-    if (from === to) return;
-    const key = `${from}|${to}`;
-    if (rankingEdgeKeys.has(key)) return;
-    rankingEdgeKeys.add(key);
-    graph.setEdge(from, to);
-  };
-  for (const edge of layoutEdges) addRankingEdge(edge.from, edge.to);
-  for (const edge of visibleEdges) {
-    if (edge.kind === "prerequisite" || edge.kind === "corequisite") {
-      addRankingEdge(edge.from, edge.to);
-    }
-  }
-
-  dagre.layout(graph);
-
-  const positions = new Map<string, { x: number; y: number }>();
-  let maxBottom = 0;
-
-  for (const node of dagreLayoutNodes) {
-    const layout = graph.node(node.id) ?? { x: 0, y: 0 };
-    const y = layout.y - COURSE_NODE_HEIGHT / 2;
-    positions.set(node.id, { x: layout.x - COURSE_NODE_WIDTH / 2, y });
-    maxBottom = Math.max(maxBottom, y + COURSE_NODE_HEIGHT);
-  }
-
-  for (const boolNode of layoutBoolNodes) {
-    const layout = graph.node(boolNode.id) ?? { x: 0, y: 0 };
-    const y = layout.y - BOOL_NODE_HEIGHT / 2;
-    positions.set(boolNode.id, { x: layout.x - BOOL_NODE_WIDTH / 2, y });
-    maxBottom = Math.max(maxBottom, y + BOOL_NODE_HEIGHT);
-  }
-
-  centerBoolNodes(positions, visibleEdges, boolNodeIds);
-  centerRootNodesOverChildren(positions, visibleEdges, boolNodeIds);
-
-  // Keep the graph within the viewport width by wrapping wide ranks downward.
   const maxWidth = Math.max(
     COURSE_NODE_WIDTH * 2 + NODE_SEP,
     (options.viewportWidth ?? DEFAULT_MAX_WIDTH) - MARGIN_X * 2,
   );
-  const laidOutIds = [
-    ...dagreLayoutNodes.map((node) => node.id),
-    ...layoutBoolNodes.map((node) => node.id),
-  ];
-  wrapWideRanks(positions, laidOutIds, boolNodeIds, maxWidth);
+  const maxHeight = Math.max(
+    COURSE_NODE_HEIGHT * 2 + RANK_SEP,
+    (options.viewportHeight ?? DEFAULT_MAX_HEIGHT) - MARGIN_Y * 2,
+  );
+  const aspectRatio = Math.min(Math.max(maxWidth / maxHeight, 0.5), 3);
+  const layerWidthBound = Math.max(
+    4,
+    Math.ceil(((maxWidth + NODE_SEP) / (COURSE_NODE_WIDTH + NODE_SEP)) * 1.5),
+  );
 
-  maxBottom = 0;
-  for (const id of laidOutIds) {
-    const position = positions.get(id);
-    if (!position) continue;
+  const positions = new Map<string, { x: number; y: number }>();
+  const pathById = new Map<string, string>();
+
+  const hasElkGraph = elkCourseNodes.length + layoutBoolNodes.length > 0;
+
+  if (hasElkGraph) {
+    const children: ElkNode[] = [
+      ...elkCourseNodes.map((node) => {
+        const { width, height } = nodeDimensions(node.id, boolNodeIds);
+        return {
+          id: node.id,
+          width,
+          height,
+          ports: nodePorts(node.id, boolNodeIds),
+          layoutOptions: { "elk.portConstraints": "FIXED_POS" },
+        };
+      }),
+      ...layoutBoolNodes.map((boolNode) => {
+        const { width, height } = nodeDimensions(boolNode.id, boolNodeIds);
+        return {
+          id: boolNode.id,
+          width,
+          height,
+          ports: nodePorts(boolNode.id, boolNodeIds),
+          layoutOptions: { "elk.portConstraints": "FIXED_POS" },
+        };
+      }),
+    ];
+
+    // Edges drawn on screen (routed + rendered) plus synthetic ranking-only
+    // edges that keep OR connectors on the spine. Synthetic ids are prefixed so
+    // we never map a rendered path onto them.
+    const elkEdges: ElkExtendedEdge[] = [
+      ...renderEdges.map((edge) => {
+        const { source, target } = edgePorts(edge.kind);
+        return {
+          id: edgeKey(edge),
+          sources: [portId(edge.from, source)],
+          targets: [portId(edge.to, target)],
+        };
+      }),
+      ...syntheticEdges.map((edge, index) => {
+        const { source, target } = edgePorts(edge.kind);
+        return {
+          id: `syn::${index}::${edge.from}|${edge.to}`,
+          sources: [portId(edge.from, source)],
+          targets: [portId(edge.to, target)],
+        };
+      }),
+    ];
+
+    const elkGraph: ElkNode = {
+      id: "root",
+      layoutOptions: {
+        "elk.algorithm": "layered",
+        "elk.direction": "DOWN",
+        "elk.edgeRouting": "ORTHOGONAL",
+        "elk.aspectRatio": String(aspectRatio),
+        "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
+        "elk.layered.compaction.postCompaction.strategy": "EDGE_LENGTH",
+        "elk.layered.layering.strategy": "MIN_WIDTH",
+        "elk.layered.layering.minWidth.upperBoundOnWidth": String(layerWidthBound),
+        "elk.layered.spacing.nodeNodeBetweenLayers": String(RANK_SEP),
+        "elk.spacing.nodeNode": String(NODE_SEP),
+        "elk.spacing.edgeNode": "24",
+        "elk.spacing.edgeEdge": "12",
+        "elk.layered.spacing.edgeNodeBetweenLayers": "24",
+        "elk.layered.spacing.edgeEdgeBetweenLayers": "12",
+        "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
+        "elk.separateConnectedComponents": "true",
+        "elk.spacing.componentComponent": "48",
+        "elk.padding": `[top=${MARGIN_Y},left=${MARGIN_X},bottom=${MARGIN_Y},right=${MARGIN_X}]`,
+      },
+      children,
+      edges: elkEdges,
+    };
+
+    const result = await elk.layout(elkGraph);
+
+    for (const child of result.children ?? []) {
+      positions.set(child.id, { x: child.x ?? 0, y: child.y ?? 0 });
+    }
+
+    for (const edge of result.edges ?? []) {
+      if (edge.id.startsWith("syn::")) continue;
+      const points = elkEdgePoints(edge);
+      if (points) {
+        pathById.set(edge.id, roundedPath(points));
+      }
+    }
+  }
+
+  let maxBottom = 0;
+  for (const [id, position] of positions) {
     const { height } = nodeDimensions(id, boolNodeIds);
     maxBottom = Math.max(maxBottom, position.y + height);
   }
 
-  const isolatedStartY =
-    dagreLayoutNodes.length > 0 || layoutBoolNodes.length > 0 ? maxBottom + RANK_SEP : MARGIN_Y;
+  const isolatedStartY = hasElkGraph ? maxBottom + RANK_SEP : MARGIN_Y;
   const isolatedPositions = layoutIsolatedGrid(isolatedNodes, isolatedStartY, maxWidth);
   for (const [id, position] of isolatedPositions) {
     positions.set(id, position);
@@ -679,17 +403,13 @@ export function layoutGraph(
     })),
   ];
 
-  const flowEdges: Edge[] = assignEdgeAnchors(
-    edges.map((edge) => ({
-      id: edgeKey(edge),
-      source: edge.from,
-      target: edge.to,
-      type: "course",
-      data: { kind: edge.kind },
-    })),
-    positions,
-    boolNodeIds,
-  );
+  const flowEdges: Edge[] = edges.map((edge) => ({
+    id: edgeKey(edge),
+    source: edge.from,
+    target: edge.to,
+    type: "course",
+    data: { kind: edge.kind, path: pathById.get(edgeKey(edge)) },
+  }));
 
   return { nodes: flowNodes, edges: flowEdges, hiddenEdgeKeys };
 }

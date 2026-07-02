@@ -4,6 +4,7 @@ export type GraphNodeRole =
   | "requiredPrerequisite"
   | "postrequisite"
   | "ghost"
+  | "missing"
   | "corequisite"
   | "exclusion"
   | "noPrerequisite"
@@ -25,6 +26,7 @@ export type GraphNode = {
   openToEngineering: boolean;
   isRoot?: boolean;
   isGhost?: boolean;
+  isMissing?: boolean;
   progress?: number;
   missing?: string[];
   roles?: GraphNodeRole[];
@@ -45,10 +47,10 @@ export type GraphResponse = {
   nodes: GraphNode[];
   boolNodes?: BoolGraphNode[];
   ghostNodes: GraphNode[];
+  missingNodes?: GraphNode[];
   edges: GraphEdge[];
   truncated: boolean;
   roots: string[];
-  hint: string | null;
 };
 
 export type CourseMatch = {
@@ -67,5 +69,7 @@ export type FilterOptions = {
   years: string[];
   breadths: string[];
   distributions: string[];
+  deliveryModes: string[];
   sessions: string[];
+  dataUpdatedAt?: string | null;
 };

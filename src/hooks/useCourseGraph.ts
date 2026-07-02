@@ -4,6 +4,7 @@ import type { BoolGraphNode, FilterOptions, GraphEdge, GraphNode } from "../type
 import {
   BREADTHS,
   CAMPUSES,
+  DELIVERY_MODES,
   DISTRIBUTIONS,
   FACULTIES,
   SESSIONS,
@@ -18,6 +19,7 @@ const defaultFilterOptions: FilterOptions = {
   years: [...YEARS],
   breadths: [...BREADTHS],
   distributions: [...DISTRIBUTIONS],
+  deliveryModes: [...DELIVERY_MODES],
   sessions: [...SESSIONS],
 };
 
@@ -28,6 +30,7 @@ function mergeFilterOptions(options: FilterOptions): FilterOptions {
     years: [...YEARS],
     breadths: [...BREADTHS],
     distributions: [...DISTRIBUTIONS],
+    deliveryModes: [...DELIVERY_MODES],
   };
 }
 
@@ -35,13 +38,15 @@ export function useCourseGraph(
   roots: string[],
   filters: FilterState,
   engineeringStudent: boolean,
+  recursivePostrequisites: boolean,
+  maxCourses: number,
 ) {
   const [nodes, setNodes] = useState<GraphNode[]>([]);
   const [boolNodes, setBoolNodes] = useState<BoolGraphNode[]>([]);
   const [ghostNodes, setGhostNodes] = useState<GraphNode[]>([]);
+  const [missingNodes, setMissingNodes] = useState<GraphNode[]>([]);
   const [edges, setEdges] = useState<GraphEdge[]>([]);
   const [truncated, setTruncated] = useState(false);
-  const [hint, setHint] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filterOptions, setFilterOptions] = useState<FilterOptions>(defaultFilterOptions);
@@ -65,9 +70,9 @@ export function useCourseGraph(
       setNodes([]);
       setBoolNodes([]);
       setGhostNodes([]);
+      setMissingNodes([]);
       setEdges([]);
       setTruncated(false);
-      setHint(null);
       setError(null);
       setLoading(false);
       return;
@@ -77,30 +82,34 @@ export function useCourseGraph(
     setLoading(true);
     setError(null);
 
-    fetchGraph(roots, filters, engineeringStudent, controller.signal)
+    fetchGraph(roots, filters, engineeringStudent, recursivePostrequisites, maxCourses, controller.signal)
       .then((data) => {
         const apiNodes = data.nodes ?? [];
         const apiGhosts = data.ghostNodes ?? [];
+        const apiMissing = data.missingNodes ?? [];
         const filteredNodes = engineeringStudent
           ? apiNodes.filter((node) => node.openToEngineering)
           : apiNodes;
         const filteredGhosts = engineeringStudent
           ? apiGhosts.filter((node) => node.openToEngineering)
           : apiGhosts;
+        const filteredMissing = engineeringStudent
+          ? apiMissing.filter((node) => node.openToEngineering)
+          : apiMissing;
         setNodes(filteredNodes);
         setBoolNodes(data.boolNodes ?? []);
         setGhostNodes(filteredGhosts);
+        setMissingNodes(filteredMissing);
         setEdges(data.edges ?? []);
         setTruncated(data.truncated ?? false);
-        setHint(data.hint ?? null);
       })
       .catch((err: Error) => {
         if (err.name === "AbortError") return;
         setNodes([]);
         setBoolNodes([]);
         setGhostNodes([]);
+        setMissingNodes([]);
         setEdges([]);
-        setHint(null);
         setError(err.message);
       })
       .finally(() => {
@@ -110,7 +119,7 @@ export function useCourseGraph(
       });
 
     return () => controller.abort();
-  }, [roots, filters, engineeringStudent]);
+  }, [roots, filters, engineeringStudent, recursivePostrequisites, maxCourses]);
 
-  return { nodes, boolNodes, ghostNodes, edges, truncated, hint, loading, error, filterOptions };
+  return { nodes, boolNodes, ghostNodes, missingNodes, edges, truncated, loading, error, filterOptions };
 }

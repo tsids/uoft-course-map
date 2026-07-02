@@ -1,5 +1,5 @@
 import { Moon, Settings, Sun } from "lucide-react";
-import type { SettingsState } from "../types/filters";
+import { MAX_COURSES_OPTIONS, type SettingsState } from "../types/filters";
 
 type SettingsPanelProps = {
   open: boolean;
@@ -56,7 +56,7 @@ export function SettingsPanel({
         aria-expanded={open}
         className={[
           "flex h-9 w-9 items-center justify-center rounded-lg border shadow-sm backdrop-blur transition",
-          "bg-white/95 text-slate-600 hover:border-blue-400 hover:text-blue-600",
+          "bg-surface/95 text-slate-600 hover:border-blue-400 hover:text-blue-600",
           "dark:bg-[#252a33]/95 dark:text-slate-300 dark:hover:border-blue-500 dark:hover:text-blue-400",
           open
             ? "border-blue-400 text-blue-600 dark:border-blue-500 dark:text-blue-400"
@@ -67,7 +67,7 @@ export function SettingsPanel({
       </button>
 
       {open && (
-        <div className="w-[min(18rem,calc(100vw-2rem))] rounded-xl border border-slate-200/80 bg-white/95 p-3 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-[#252a33]/95">
+        <div className="w-[min(18rem,calc(100vw-2rem))] rounded-xl border border-slate-200/80 bg-surface/95 p-3 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-[#252a33]/95">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Settings</h2>
             <button
@@ -78,7 +78,7 @@ export function SettingsPanel({
             >
               <span
                 className={[
-                  "flex h-6 w-6 items-center justify-center rounded-full bg-white text-amber-500 shadow transition dark:bg-slate-700 dark:text-blue-300",
+                  "flex h-6 w-6 items-center justify-center rounded-full bg-surface text-amber-500 shadow transition dark:bg-slate-700 dark:text-blue-300",
                   theme === "dark" ? "translate-x-6" : "translate-x-0",
                 ].join(" ")}
               >
@@ -99,22 +99,35 @@ export function SettingsPanel({
               onChange={(showNoPrerequisites) => onSettingsChange({ showNoPrerequisites })}
             />
             <SettingCheckbox
-              label="Show prerequisites"
-              description="Show the prerequisite courses of your selected courses."
-              checked={settings.showPrerequisites}
-              onChange={(showPrerequisites) => onSettingsChange({ showPrerequisites })}
-            />
-            <SettingCheckbox
-              label="Highlight prerequisite path"
-              description="Highlight the prerequisite path of your selected courses."
-              checked={settings.highlightPath}
-              onChange={(highlightPath) => onSettingsChange({ highlightPath })}
+              label="Recursive postrequisites"
+              description="Keep expanding: courses unlocked by your postrequisites, and so on."
+              checked={settings.recursivePostrequisites}
+              onChange={(recursivePostrequisites) => onSettingsChange({ recursivePostrequisites })}
             />
             {/* <SettingCheckbox
               label="Engineering student"
               checked={settings.engineeringStudent}
               onChange={(engineeringStudent) => onSettingsChange({ engineeringStudent })}
             /> */}
+            <label className="flex items-center justify-between gap-2 rounded-md px-1 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60">
+              <span className="flex flex-col">
+                <span className="text-sm text-slate-800 dark:text-slate-100">Max courses shown</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  Lower this if the graph runs slowly.
+                </span>
+              </span>
+              <select
+                value={settings.maxCourses}
+                onChange={(event) => onSettingsChange({ maxCourses: Number(event.target.value) })}
+                className="rounded-md border border-slate-200 bg-surface px-2 py-1 text-sm text-slate-800 outline-none focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100"
+              >
+                {MAX_COURSES_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
         </div>
       )}

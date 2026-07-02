@@ -2,6 +2,10 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@theme {
+  --color-surface: #faf9f6;
+}
+
 html,
 body,
 #root {

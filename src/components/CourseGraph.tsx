@@ -21,14 +21,19 @@ type CourseGraphProps = {
   nodes: GraphNode[];
   boolNodes: BoolGraphNode[];
   ghostNodes: GraphNode[];
+  missingNodes: GraphNode[];
   edges: GraphEdge[];
   settings: SettingsState;
   selectedNodeId: string | null;
   theme: "light" | "dark";
   onSelectNode: (id: string | null) => void;
   onNodeDoubleClick?: (id: string) => void;
+  onAddCourse?: (code: string) => void;
   onOpenCourseInfo?: (code: string) => void;
+  statusVisible?: boolean;
 };
+
+type LayoutResult = Awaited<ReturnType<typeof layoutGraph>>;
 
 const nodeTypes: NodeTypes = {
   course: CourseNode,
@@ -69,6 +74,12 @@ function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean,
   return { stroke: dark ? "#94a3b8" : "#64748b", strokeWidth: base, opacity };
 }
 
+function edgeMarkerColor(kind: GraphEdge["kind"], dark: boolean) {
+  if (kind === "exclusion") return dark ? "#f87171" : "#dc2626";
+  if (kind === "corequisite") return dark ? "#60a5fa" : "#2563eb";
+  return dark ? "#a78bfa" : "#7c3aed";
+}
+
 const DEFAULT_EDGE_OPACITY = 0.6;
 
 function getPrerequisitePath(
@@ -93,23 +104,79 @@ function getPrerequisitePath(
   return reachable;
 }
 
+function getImmediatePostrequisites(
+  nodeId: string,
+  edges: GraphEdge[],
+  kinds: ReadonlySet<GraphEdge["kind"]>,
+  boolNodeIds: ReadonlySet<string>,
+): Set<string> {
+  const related = new Set<string>();
+  const visited = new Set<string>([nodeId]);
+  const stack = [nodeId];
+
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    for (const edge of edges) {
+      if (edge.from !== current) continue;
+      if (!kinds.has(edge.kind)) continue;
+      if (visited.has(edge.to)) continue;
+      visited.add(edge.to);
+      related.add(edge.to);
+      if (boolNodeIds.has(edge.to)) stack.push(edge.to);
+    }
+  }
+
+  return related;
+}
+
+function getDirectlyConnectedNodes(
+  nodeId: string,
+  edges: GraphEdge[],
+  kinds: ReadonlySet<GraphEdge["kind"]>,
+): Set<string> {
+  const related = new Set<string>([nodeId]);
+
+  for (const edge of edges) {
+    if (!kinds.has(edge.kind)) continue;
+    if (edge.from === nodeId) {
+      related.add(edge.to);
+    } else if (edge.to === nodeId) {
+      related.add(edge.from);
+    }
+  }
+
+  return related;
+}
+
 export function CourseGraph({
   nodes,
   boolNodes,
   ghostNodes,
+  missingNodes,
   edges,
   settings,
   selectedNodeId,
   theme,
   onSelectNode,
   onNodeDoubleClick,
+  onAddCourse,
   onOpenCourseInfo,
+  statusVisible = false,
 }: CourseGraphProps) {
   const dark = theme === "dark";
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [viewportWidth, setViewportWidth] = useState(0);
-  const allNodes = useMemo(() => [...nodes, ...ghostNodes], [nodes, ghostNodes]);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const allNodes = useMemo(
+    () => [...nodes, ...ghostNodes, ...missingNodes],
+    [nodes, ghostNodes, missingNodes],
+  );
+  const missingNodeIds = useMemo(
+    () => new Set(missingNodes.map((node) => node.id)),
+    [missingNodes],
+  );
+  const boolNodeIds = useMemo(() => new Set(boolNodes.map((node) => node.id)), [boolNodes]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -117,7 +184,9 @@ export function CourseGraph({
     const update = () => {
       // Round to reduce churn so a re-layout only happens on meaningful resizes.
       const width = Math.round(element.clientWidth / 50) * 50;
+      const height = Math.round(element.clientHeight / 50) * 50;
       setViewportWidth((prev) => (prev === width ? prev : width));
+      setViewportHeight((prev) => (prev === height ? prev : height));
     };
     update();
     const observer = new ResizeObserver(update);
@@ -126,46 +195,116 @@ export function CourseGraph({
   }, []);
 
   const hoverPathNodeId = hoveredNodeId;
-  const selectionPathNodeId = settings.highlightPath ? selectedNodeId : null;
+  const selectionPathNodeId = selectedNodeId;
 
-  const pathEdgeKinds = useMemo(() => {
-    const kinds = new Set<GraphEdge["kind"]>(["postrequisite"]);
-    if (settings.showPrerequisites) {
-      kinds.add("prerequisite");
-    }
-    return kinds;
-  }, [settings.showPrerequisites]);
+  const pathEdgeKinds = useMemo(
+    () => new Set<GraphEdge["kind"]>(["postrequisite", "prerequisite"]),
+    [],
+  );
 
   const hoverHighlightedNodeIds = useMemo(() => {
     if (!hoverPathNodeId) return new Set<string>();
-    return getPrerequisitePath(hoverPathNodeId, edges, pathEdgeKinds);
-  }, [edges, hoverPathNodeId, pathEdgeKinds]);
+    const highlighted = getPrerequisitePath(hoverPathNodeId, edges, pathEdgeKinds);
+    const relatedNodes = getDirectlyConnectedNodes(
+      hoverPathNodeId,
+      edges,
+      new Set<GraphEdge["kind"]>(["corequisite", "exclusion"]),
+    );
+
+    for (const nodeId of relatedNodes) {
+      highlighted.add(nodeId);
+    }
+
+    for (const nodeId of getImmediatePostrequisites(hoverPathNodeId, edges, pathEdgeKinds, boolNodeIds)) {
+      highlighted.add(nodeId);
+    }
+
+    return highlighted;
+  }, [boolNodeIds, edges, hoverPathNodeId, pathEdgeKinds]);
+
+  const hoverDirectRelatedNodeIds = useMemo(() => {
+    if (!hoverPathNodeId) return new Set<string>();
+    return getDirectlyConnectedNodes(
+      hoverPathNodeId,
+      edges,
+      new Set<GraphEdge["kind"]>(["corequisite", "exclusion"]),
+    );
+  }, [edges, hoverPathNodeId]);
 
   const selectionHighlightedNodeIds = useMemo(() => {
     if (!selectionPathNodeId) return new Set<string>();
-    return getPrerequisitePath(selectionPathNodeId, edges, pathEdgeKinds);
-  }, [edges, pathEdgeKinds, selectionPathNodeId]);
+    const highlighted = getPrerequisitePath(selectionPathNodeId, edges, pathEdgeKinds);
+
+    for (const nodeId of getImmediatePostrequisites(selectionPathNodeId, edges, pathEdgeKinds, boolNodeIds)) {
+      highlighted.add(nodeId);
+    }
+
+    return highlighted;
+  }, [boolNodeIds, edges, pathEdgeKinds, selectionPathNodeId]);
 
   const roleMap = useMemo(() => buildNodeRoleMap(allNodes, edges), [allNodes, edges]);
 
   const nodeVisibility = useMemo(() => {
     const map = new Map<string, boolean>();
     for (const node of allNodes) {
-      map.set(node.id, isNodeVisible(node, settings, roleMap));
+      map.set(node.id, isNodeVisible(node, roleMap));
     }
     for (const boolNode of boolNodes) {
-      map.set(boolNode.id, isBoolNodeVisible(boolNode.id, settings, edges));
+      map.set(boolNode.id, isBoolNodeVisible(boolNode.id, edges));
     }
     return map;
-  }, [allNodes, boolNodes, edges, settings.showPrerequisites]);
+  }, [allNodes, boolNodes, edges]);
+
+  const [laidOut, setLaidOut] = useState<LayoutResult | null>(null);
+
+  const layoutSignature = useMemo(() => {
+    const nodeIds = allNodes.map((node) => node.id).join(",");
+    const boolIds = boolNodes.map((node) => node.id).join(",");
+    const edgeKeys = edges.map((edge) => `${edge.from}|${edge.to}|${edge.kind}`).join(",");
+    const visibility = [...nodeVisibility.entries()]
+      .map(([id, visible]) => (visible ? id : `!${id}`))
+      .join(",");
+    return `${viewportWidth}x${viewportHeight}::${nodeIds}::${boolIds}::${edgeKeys}::${visibility}`;
+  }, [allNodes, boolNodes, edges, nodeVisibility, viewportWidth, viewportHeight]);
+
+  const lastLayoutSignature = useRef<string | null>(null);
+
+  // ELK routing is asynchronous, so layout runs in an effect and only re-runs
+  // on structural changes. Highlight/hover styling is layered on separately
+  // below so hovering never triggers a re-layout.
+  useEffect(() => {
+    if (lastLayoutSignature.current === layoutSignature) return;
+    let cancelled = false;
+    layoutGraph(allNodes, boolNodes, edges, {
+      nodeVisibility,
+      viewportWidth: viewportWidth || undefined,
+      viewportHeight: viewportHeight || undefined,
+    })
+      .then((result) => {
+        if (cancelled) return;
+        lastLayoutSignature.current = layoutSignature;
+        setLaidOut(result);
+      })
+      .catch(() => {
+        /* stale/aborted layout — ignore */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [allNodes, boolNodes, edges, layoutSignature, nodeVisibility, viewportWidth, viewportHeight]);
+
+  const courseById = useMemo(() => {
+    const map = new Map<string, GraphNode>();
+    for (const node of allNodes) {
+      map.set(node.id, node);
+    }
+    return map;
+  }, [allNodes]);
 
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
-    const laidOut = layoutGraph(allNodes, boolNodes, edges, {
-      nodeVisibility,
-      settings,
-      viewportWidth: viewportWidth || undefined,
-    });
+    if (!laidOut) return { nodes: [] as Node[], edges: [] as Edge[] };
     const isHovering = hoverPathNodeId !== null;
+    const edgeIds = new Set(laidOut.edges.map((edge) => edge.id));
 
     const styledNodes: Node[] = laidOut.nodes.map((node) => {
       const visible = nodeVisibility.get(node.id) ?? false;
@@ -193,6 +332,9 @@ export function CourseGraph({
         };
       }
 
+      const course =
+        courseById.get(node.id) ?? (node.data as { course?: GraphNode }).course;
+
       return {
         ...node,
         style: {
@@ -203,6 +345,7 @@ export function CourseGraph({
         focusable: visible,
         data: {
           ...(node.data as object),
+          course,
           selected: visible && node.id === selectedNodeId,
           highlighted: visible && highlighted,
           hovered: visible && node.id === hoverPathNodeId,
@@ -220,12 +363,17 @@ export function CourseGraph({
       const targetVisible = nodeVisibility.get(edge.target) ?? false;
       const visible = sourceVisible && targetVisible;
       const hiddenByCompression = laidOut.hiddenEdgeKeys.has(edge.id);
+      const bidirectional = kind === "corequisite" || kind === "exclusion";
+      const hasReverseEdge = bidirectional && edgeIds.has(`${edge.target}|${edge.source}|${kind}`);
+      const hiddenAsReverseDuplicate = hasReverseEdge && edge.source > edge.target;
+      const markerColor = edgeMarkerColor(kind, dark);
       const hoverHighlighted =
         isHovering &&
         visible &&
-        pathEdgeKinds.has(kind) &&
-        hoverHighlightedNodeIds.has(edge.source) &&
-        hoverHighlightedNodeIds.has(edge.target);
+        ((pathEdgeKinds.has(kind) && hoverHighlightedNodeIds.has(edge.source) && hoverHighlightedNodeIds.has(edge.target)) ||
+          ((kind === "corequisite" || kind === "exclusion") &&
+            ((edge.source === hoverPathNodeId && hoverDirectRelatedNodeIds.has(edge.target)) ||
+              (edge.target === hoverPathNodeId && hoverDirectRelatedNodeIds.has(edge.source)))));
       const selectionHighlighted =
         selectionPathNodeId !== null &&
         visible &&
@@ -234,32 +382,42 @@ export function CourseGraph({
         selectionHighlightedNodeIds.has(edge.target);
       const highlighted = hoverHighlighted || selectionHighlighted;
       const dimmed = isHovering && !hoverHighlighted;
+      const hidden = !visible || hiddenByCompression || hiddenAsReverseDuplicate;
+      // Edges leading to a "needed but missing" prerequisite read as tentative:
+      // dashed and fainter, so the unmet branch is visually distinct.
+      const touchesMissing = missingNodeIds.has(edge.source) || missingNodeIds.has(edge.target);
+      const baseStyle = edgeStyle(kind, dark, highlighted, dimmed);
+      const baseOpacity = hidden ? 0 : dimmed ? 0.15 : highlighted ? 1 : DEFAULT_EDGE_OPACITY;
 
       return {
         ...edge,
-        hidden: !visible || hiddenByCompression,
+        hidden,
         style: {
-          ...edgeStyle(kind, dark, highlighted, dimmed),
-          opacity: !visible || hiddenByCompression ? 0 : dimmed ? 0.15 : highlighted ? 1 : DEFAULT_EDGE_OPACITY,
+          ...baseStyle,
+          ...(touchesMissing ? { strokeDasharray: "5 4" } : {}),
+          opacity: touchesMissing && !hidden && !highlighted ? baseOpacity * 0.6 : baseOpacity,
         },
-        markerEnd:
-          !visible || hiddenByCompression
+        markerStart:
+          hidden || !hasReverseEdge
             ? undefined
-            : kind === "exclusion"
-              ? { type: "arrowclosed" as const, color: dark ? "#f87171" : "#dc2626" }
-              : { type: "arrowclosed" as const, color: dark ? "#a78bfa" : "#7c3aed" },
+            : { type: "arrowclosed" as const, color: markerColor },
+        markerEnd:
+          hidden
+            ? undefined
+            : { type: "arrowclosed" as const, color: markerColor },
         zIndex: highlighted ? 2 : 0,
       };
     });
 
     return { nodes: styledNodes, edges: styledEdges };
   }, [
-    allNodes,
-    boolNodes,
+    laidOut,
+    courseById,
     dark,
-    edges,
     hoverHighlightedNodeIds,
+    hoverDirectRelatedNodeIds,
     hoverPathNodeId,
+    missingNodeIds,
     nodeVisibility,
     onOpenCourseInfo,
     selectedNodeId,
@@ -267,16 +425,22 @@ export function CourseGraph({
     selectionPathNodeId,
     settings,
     pathEdgeKinds,
-    viewportWidth,
   ]);
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
       const visible = (node.data as { visible?: boolean }).visible ?? true;
       if (!visible) return;
+      // Clicking a faded "needed" prerequisite adds it to the selection so the
+      // graph re-resolves and the course it was blocking can unlock.
+      const course = (node.data as { course?: GraphNode }).course;
+      if (course?.isMissing) {
+        onAddCourse?.(course.code);
+        return;
+      }
       onSelectNode(selectedNodeId === node.id ? null : node.id);
     },
-    [onSelectNode, selectedNodeId],
+    [onAddCourse, onSelectNode, selectedNodeId],
   );
 
   const onNodeDoubleClickHandler = useCallback(
@@ -306,12 +470,12 @@ export function CourseGraph({
     const style = document.createElement("style");
     style.textContent = `
       .react-flow__controls button {
-        background: ${dark ? "#252a33" : "#ffffff"};
+        background: ${dark ? "#252a33" : "#faf9f6"};
         border-color: ${dark ? "#475569" : "#e2e8f0"};
         color: ${dark ? "#e2e8f0" : "#334155"};
       }
       .react-flow__controls button:hover {
-        background: ${dark ? "#1f242d" : "#f8fafc"};
+        background: ${dark ? "#1f242d" : "#f3f1ec"};
       }
     `;
     document.head.appendChild(style);
@@ -322,13 +486,13 @@ export function CourseGraph({
     return (
       <div
         ref={containerRef}
-        className="absolute inset-0 bg-[#f4f6f8] dark:bg-[#1a1d23]"
+        className="absolute inset-0 bg-[#f4f2ed] dark:bg-[#1a1d23]"
       />
     );
   }
 
   return (
-    <div ref={containerRef} className="absolute inset-0 bg-[#f4f6f8] dark:bg-[#1a1d23]">
+    <div ref={containerRef} className="absolute inset-0 bg-[#f4f2ed] dark:bg-[#1a1d23]">
       <ReactFlow
         nodes={flowNodes}
         edges={flowEdges}
@@ -346,7 +510,8 @@ export function CourseGraph({
         proOptions={{ hideAttribution: true }}
       >
         <Background gap={20} color={dark ? "#334155" : "#cbd5e1"} />
-        <Controls showInteractive={false} />
+        {/* Keep the zoom buttons clear of the status message box at bottom-left. */}
+        <Controls showInteractive={false} style={statusVisible ? { marginBottom: 52 } : undefined} />
       </ReactFlow>
     </div>
   );

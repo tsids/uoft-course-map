@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchCourseDetail, resolveCourses } from "../api/client";
 import type { CourseMatch, FilterOptions } from "../types/graph";
 import type { FilterState } from "../types/filters";
-import { YEAR_LEVELS } from "../types/filters";
+import { CAMPUS_LABELS, campusLabel, YEAR_LEVELS } from "../types/filters";
 import {
   hasMultipleCourseCodes,
   isValidCourseCodeFormat,
@@ -37,7 +37,7 @@ function getActiveFilters(filters: FilterState): ActiveFilter[] {
     entries.push({ key: "session", label: "Session", value, removeValue: value });
   }
   for (const value of filters.campus) {
-    entries.push({ key: "campus", label: "Campus", value, removeValue: value });
+    entries.push({ key: "campus", label: "Campus", value: campusLabel(value), removeValue: value });
   }
   for (const value of filters.year) {
     entries.push({
@@ -52,6 +52,9 @@ function getActiveFilters(filters: FilterState): ActiveFilter[] {
   }
   for (const value of filters.distribution) {
     entries.push({ key: "distribution", label: "Distribution", value, removeValue: value });
+  }
+  for (const value of filters.delivery) {
+    entries.push({ key: "delivery", label: "Delivery", value, removeValue: value });
   }
   for (const value of filters.faculty) {
     entries.push({ key: "faculty", label: "Faculty", value, removeValue: value });
@@ -109,7 +112,7 @@ function MultiSelectField({
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-left text-sm text-slate-800 outline-none focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100"
+        className="flex w-full items-center justify-between gap-1 rounded-md border border-slate-200 bg-surface px-2 py-1.5 text-left text-sm text-slate-800 outline-none focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100"
       >
         <span className="truncate">{summary}</span>
         <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />
@@ -119,7 +122,7 @@ function MultiSelectField({
         <ul
           role="listbox"
           aria-multiselectable="true"
-          className="absolute left-0 top-[calc(100%+4px)] z-20 max-h-56 w-full min-w-[11rem] overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-600 dark:bg-[#1f242d]"
+          className="absolute left-0 top-[calc(100%+4px)] z-20 max-h-56 w-full min-w-[11rem] overflow-y-auto rounded-md border border-slate-200 bg-surface py-1 shadow-lg dark:border-slate-600 dark:bg-[#1f242d]"
         >
           {options.map((option) => (
             <li key={option} role="option" aria-selected={values.includes(option)}>
@@ -267,7 +270,57 @@ export function SearchPanel({
     onChange({ subjectAreas: filters.subjectAreas.filter((item) => item !== subjectArea) });
   };
 
-  const multiSelectKeys = ["session", "campus", "year", "breadth", "distribution", "faculty"] as const;
+  const addSubjectAreasFromList = (raw: string) => {
+    const parts = parseCommaSeparatedCourses(raw);
+    if (parts.length === 0) return;
+
+    const errors: string[] = [];
+    const next = [...filters.subjectAreas];
+    const selected = new Set(next.map((area) => area.toLowerCase()));
+
+    for (const part of parts) {
+      const query = part.toLowerCase();
+      const matches = filterOptions.subjectAreas.filter((area) =>
+        area.toLowerCase().includes(query),
+      );
+      const match =
+        matches.find((area) => area.toLowerCase() === query) ??
+        (matches.length === 1 ? matches[0] : undefined);
+
+      if (!match) {
+        errors.push(
+          matches.length > 1
+            ? `Ambiguous subject area: ${part}`
+            : `Subject area not found: ${part}`,
+        );
+        continue;
+      }
+      if (selected.has(match.toLowerCase())) {
+        errors.push(`Subject area already added: ${match}`);
+        continue;
+      }
+      selected.add(match.toLowerCase());
+      next.push(match);
+    }
+
+    const added = next.length > filters.subjectAreas.length;
+    if (added) {
+      onChange({ subjectAreas: next });
+    }
+
+    setSubjectAreaQuery("");
+    setSubjectAreaSuggestionsOpen(false);
+    setSubjectAreaActiveIndex(-1);
+    subjectAreaInputRef.current?.focus();
+
+    if (errors.length > 0) {
+      onResolveError(errors.join("; "));
+    } else if (added) {
+      onResolveError(null);
+    }
+  };
+
+  const multiSelectKeys = ["session", "campus", "year", "breadth", "distribution", "delivery", "faculty"] as const;
 
   const clearFilter = (key: keyof FilterState, removeValue?: string) => {
     if (key === "subjectAreas") {
@@ -392,8 +445,8 @@ export function SearchPanel({
         "pointer-events-auto rounded-xl border backdrop-blur-sm",
         "transition-[width,background-color,border-color,box-shadow,padding] duration-200 ease-out",
         open
-          ? "w-[min(42rem,calc(100vw-2rem))] border-slate-200/80 bg-white/95 p-3 shadow-lg dark:border-slate-700/80 dark:bg-[#252a33]/95"
-          : "w-56 border-slate-200/20 bg-white/15 p-1.5 shadow-none dark:border-slate-700/20 dark:bg-[#252a33]/15",
+          ? "w-[min(42rem,calc(100vw-2rem))] border-slate-200/80 bg-surface/95 p-3 shadow-lg dark:border-slate-700/80 dark:bg-[#252a33]/95"
+          : "w-56 border-slate-200/20 bg-surface/15 p-1.5 shadow-none dark:border-slate-700/20 dark:bg-[#252a33]/15",
       ].join(" ")}
     >
       <label className="flex flex-col gap-1">
@@ -475,7 +528,7 @@ export function SearchPanel({
               className={[
                 "w-full rounded-md border py-2 pl-8 pr-2 text-sm outline-none transition-colors duration-200",
                 open
-                  ? "border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100"
+                  ? "border-slate-200 bg-surface text-slate-800 placeholder:text-slate-400 focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100"
                   : "border-transparent bg-transparent text-slate-500 placeholder:text-slate-400/80 focus:border-slate-200/40 dark:text-slate-400 dark:placeholder:text-slate-500/80 dark:focus:border-slate-600/40",
               ].join(" ")}
             />
@@ -484,7 +537,7 @@ export function SearchPanel({
               <ul
                 id="course-suggestions"
                 role="listbox"
-                className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-600 dark:bg-[#1f242d]"
+                className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-surface py-1 shadow-lg dark:border-slate-600 dark:bg-[#1f242d]"
               >
                 {suggestionsLoading && (
                   <li className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
@@ -523,23 +576,27 @@ export function SearchPanel({
               </ul>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(true);
-              onToggleFilters();
-            }}
-            aria-label={filtersExpanded ? "Hide filters" : "Show filters"}
-            aria-expanded={filtersExpanded}
-            className={[
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border transition",
-              filtersExpanded
-                ? "border-blue-400 bg-blue-50 text-blue-600 dark:border-blue-500 dark:bg-blue-500/15 dark:text-blue-400"
-                : "border-slate-200/40 bg-transparent text-slate-400 hover:border-slate-300 hover:text-slate-600 dark:border-slate-600/40 dark:text-slate-500 dark:hover:border-slate-500 dark:hover:text-slate-300",
-            ].join(" ")}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-          </button>
+
+          {open && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(true);
+                onToggleFilters();
+              }}
+              aria-label={filtersExpanded ? "Hide filters" : "Show filters"}
+              aria-expanded={filtersExpanded}
+              title={filtersExpanded ? "Hide filters" : "Show filters"}
+              className={[
+                "grid aspect-square shrink-0 place-items-center self-stretch rounded-md border transition duration-200",
+                filtersExpanded
+                  ? "border-blue-400 bg-blue-50 text-blue-600 dark:border-blue-500 dark:bg-blue-500/15 dark:text-blue-400"
+                  : "border-slate-200 bg-surface/80 text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-400 dark:hover:border-slate-500 dark:hover:text-slate-200",
+              ].join(" ")}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </label>
 
@@ -594,7 +651,7 @@ export function SearchPanel({
               open
                 ? filters.subjectAreas.length > 0
                   ? "Add another subject area..."
-                  : "Search by subject area..."
+                  : "Search by subject area (comma-separated)..."
                 : filters.subjectAreas.length > 0
                   ? `${filters.subjectAreas.length} area${filters.subjectAreas.length === 1 ? "" : "s"}`
                   : "Subject area..."
@@ -602,8 +659,19 @@ export function SearchPanel({
             value={subjectAreaQuery}
             onChange={(event) => {
               setSubjectAreaQuery(event.target.value);
-              setSubjectAreaSuggestionsOpen(true);
-              setSubjectAreaActiveIndex(0);
+              if (!event.target.value.includes(",")) {
+                setSubjectAreaSuggestionsOpen(true);
+                setSubjectAreaActiveIndex(0);
+              } else {
+                setSubjectAreaSuggestionsOpen(false);
+                setSubjectAreaActiveIndex(-1);
+              }
+            }}
+            onPaste={(event) => {
+              const text = event.clipboardData.getData("text");
+              if (!text.includes(",")) return;
+              event.preventDefault();
+              addSubjectAreasFromList(text);
             }}
             onFocus={() => {
               if (subjectAreaQuery.trim().length >= 1) {
@@ -636,6 +704,10 @@ export function SearchPanel({
               }
               if (event.key === "Enter") {
                 event.preventDefault();
+                if (subjectAreaQuery.includes(",")) {
+                  addSubjectAreasFromList(subjectAreaQuery);
+                  return;
+                }
                 if (subjectAreaActiveIndex >= 0 && subjectAreaSuggestions[subjectAreaActiveIndex]) {
                   selectSubjectArea(subjectAreaSuggestions[subjectAreaActiveIndex]);
                   return;
@@ -648,7 +720,7 @@ export function SearchPanel({
             className={[
               "w-full rounded-md border py-2 pl-8 pr-2 text-sm outline-none transition-colors duration-200",
               open
-                ? "border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100"
+                ? "border-slate-200 bg-surface text-slate-800 placeholder:text-slate-400 focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100"
                 : "border-transparent bg-transparent text-slate-500 placeholder:text-slate-400/80 focus:border-slate-200/40 dark:text-slate-400 dark:placeholder:text-slate-500/80 dark:focus:border-slate-600/40",
             ].join(" ")}
           />
@@ -657,7 +729,7 @@ export function SearchPanel({
             <ul
               id="subject-area-suggestions"
               role="listbox"
-              className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-600 dark:bg-[#1f242d]"
+              className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-surface py-1 shadow-lg dark:border-slate-600 dark:bg-[#1f242d]"
             >
               {subjectAreaSuggestions.map((subjectArea, index) => (
                 <li key={subjectArea} role="option" aria-selected={index === subjectAreaActiveIndex}>
@@ -771,6 +843,7 @@ export function SearchPanel({
             label="Campus"
             values={filters.campus}
             options={filterOptions.campuses}
+            optionLabels={CAMPUS_LABELS}
             onChange={(campus) => onChange({ campus })}
           />
           <MultiSelectField
@@ -791,6 +864,12 @@ export function SearchPanel({
             values={filters.distribution}
             options={filterOptions.distributions}
             onChange={(distribution) => onChange({ distribution })}
+          />
+          <MultiSelectField
+            label="Delivery"
+            values={filters.delivery}
+            options={filterOptions.deliveryModes}
+            onChange={(delivery) => onChange({ delivery })}
           />
           <MultiSelectField
             label="Faculty"

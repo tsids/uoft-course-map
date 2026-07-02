@@ -1,0 +1,290 @@
+import { ExternalLink, Heart, Github, MessageSquareText, X } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+
+type SupportPanel = "feedback" | "donate" | null;
+
+type HeaderProps = {
+  activePanel: SupportPanel;
+  onOpenFeedback: () => void;
+  onOpenDonate: () => void;
+  onClosePanel: () => void;
+  repositoryUrl: string;
+  kofiUrl: string;
+  dataUpdatedAt?: string | null;
+};
+
+function buildIssueUrl(repositoryUrl: string, title: string, body: string) {
+  const baseUrl = repositoryUrl.replace(/\/$/, "");
+  return `${baseUrl}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+}
+
+function SupportButton({
+  children,
+  onClick,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  tone?: "neutral" | "accent";
+}) {
+  const baseClasses =
+    "inline-flex items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2";
+  const toneClasses =
+    tone === "accent"
+      ? "border-rose-200 bg-rose-500 text-white hover:bg-rose-600 focus:ring-rose-500 dark:border-rose-400/40 dark:bg-rose-500 dark:hover:bg-rose-400"
+      : "border-slate-200 bg-surface text-slate-700 hover:border-slate-300 hover:bg-slate-50 focus:ring-slate-400 dark:border-slate-700 dark:bg-[#1f242d] dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800";
+
+  return (
+    <button type="button" onClick={onClick} className={`${baseClasses} ${toneClasses}`}>
+      {children}
+    </button>
+  );
+}
+
+export function Header({
+  activePanel,
+  onOpenFeedback,
+  onOpenDonate,
+  onClosePanel,
+  repositoryUrl,
+  kofiUrl,
+  dataUpdatedAt,
+}: HeaderProps) {
+  const [topic, setTopic] = useState<"bug" | "suggestion">("bug");
+  const [summary, setSummary] = useState("");
+  const [details, setDetails] = useState("");
+
+  const issueUrl = useMemo(() => {
+    const prefix = topic === "bug" ? "Bug report" : "Suggestion";
+    const issueTitle = summary.trim() ? `${prefix}: ${summary.trim()}` : prefix;
+    const issueBody = [
+      `Type: ${topic === "bug" ? "Bug report" : "Suggestion"}`,
+      "",
+      details.trim() || "Describe what you saw or what you would like to change.",
+    ].join("\n");
+
+    return buildIssueUrl(repositoryUrl, issueTitle, issueBody);
+  }, [details, repositoryUrl, summary, topic]);
+
+  const openIssue = () => {
+    window.open(issueUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const updatedLabel = useMemo(() => {
+    if (!dataUpdatedAt) return null;
+    const date = new Date(dataUpdatedAt);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  }, [dataUpdatedAt]);
+
+  return (
+    <>
+      <header className="w-full border-b border-slate-200/80 bg-surface/95 backdrop-blur dark:border-slate-700/80 dark:bg-[#1b2028]/95">
+        <div className="flex w-full items-center justify-between gap-3 px-4 py-2">
+          <div className="flex min-w-0 items-baseline gap-2">
+            <p className="shrink-0 text-sm font-semibold text-slate-900 dark:text-slate-100">
+              UofT Course Map
+            </p>
+            <p className="hidden truncate text-xs text-slate-500 dark:text-slate-400 sm:block">
+              An interactive map of UofT courses, their prerequisites, and postrequisites.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {updatedLabel && (
+              <p className="hidden shrink-0 text-xs text-slate-400 dark:text-slate-500 md:block">
+                Last updated {updatedLabel}
+              </p>
+            )}
+            <SupportButton onClick={onOpenFeedback}>
+              <MessageSquareText className="h-3.5 w-3.5" />
+              Bugs/Suggestions
+            </SupportButton>
+            <SupportButton tone="accent" onClick={onOpenDonate}>
+              <Heart className="h-3.5 w-3.5" />
+              Donate
+            </SupportButton>
+            <a
+              href={repositoryUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="GitHub repository"
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-surface p-1.5 text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-[#1f242d] dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+            >
+              <Github className="h-4 w-4" />
+            </a>
+          </div>
+        </div>
+      </header>
+
+      {activePanel && (
+        <div className="fixed inset-0 z-30 flex items-end justify-center bg-slate-950/55 px-3 py-3 backdrop-blur-sm sm:items-center">
+          <div className="w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-surface shadow-2xl dark:border-slate-700 dark:bg-[#151a21]">
+            {activePanel === "feedback" ? (
+              <div className="p-5 sm:p-6">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600 dark:text-blue-400">
+                      Feedback
+                    </p>
+                    <h2 className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-50">
+                      Bug reports and suggestions
+                    </h2>
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                      Fill this out and we’ll open a prefilled GitHub issue in a new tab.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={onClosePanel}
+                    className="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-200"
+                    aria-label="Close feedback form"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <form
+                  className="grid gap-4"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    openIssue();
+                    onClosePanel();
+                    setSummary("");
+                    setDetails("");
+                    setTopic("bug");
+                  }}
+                >
+                  <label className="grid gap-2 text-sm text-slate-700 dark:text-slate-200">
+                    <span>What kind of feedback is this?</span>
+                    <select
+                      value={topic}
+                      onChange={(event) => setTopic(event.target.value as "bug" | "suggestion")}
+                      className="rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 dark:border-slate-700 dark:bg-[#1f242d] dark:text-slate-50"
+                    >
+                      <option value="bug">Bug report</option>
+                      <option value="suggestion">Suggestion</option>
+                    </select>
+                  </label>
+
+                  <label className="grid gap-2 text-sm text-slate-700 dark:text-slate-200">
+                    <span>Summary</span>
+                    <input
+                      value={summary}
+                      onChange={(event) => setSummary(event.target.value)}
+                      placeholder={topic === "bug" ? "What went wrong?" : "What should be improved?"}
+                      className="rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 dark:border-slate-700 dark:bg-[#1f242d] dark:text-slate-50"
+                    />
+                  </label>
+
+                  <label className="grid gap-2 text-sm text-slate-700 dark:text-slate-200">
+                    <span>Details</span>
+                    <textarea
+                      value={details}
+                      onChange={(event) => setDetails(event.target.value)}
+                      rows={6}
+                      placeholder="Add steps to reproduce, expected behavior, course codes, or anything else that helps."
+                      className="rounded-2xl border border-slate-200 bg-surface px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 dark:border-slate-700 dark:bg-[#1f242d] dark:text-slate-50"
+                    />
+                  </label>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Submitting opens a GitHub issue in <span className="break-all">{repositoryUrl}</span>.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={onClosePanel}
+                        className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-500"
+                      >
+                        <MessageSquareText className="h-4 w-4" />
+                        Open issue
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <div className="grid gap-5 p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-600 dark:text-rose-400">
+                      Donate
+                    </p>
+                    <h2 className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-50">
+                      Support the project
+                    </h2>
+                    <p className="mt-2 max-w-xl text-sm text-slate-600 dark:text-slate-300">
+                      If this tool helps you plan courses, a small donation helps keep it maintained and improved.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={onClosePanel}
+                    className="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-200"
+                    aria-label="Close donation page"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="grid gap-3 rounded-3xl border border-rose-200 bg-rose-50/60 p-4 dark:border-rose-500/20 dark:bg-rose-500/10">
+                  <p className="text-sm font-medium text-slate-900 dark:text-slate-50">
+                    Preferred support options
+                  </p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    Choose the platform that works best for you.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <a
+                      href={kofiUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 rounded-full bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-500"
+                    >
+                      <Heart className="h-4 w-4" />
+                      Donate on Ko-fi
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
+                </div>
+
+                <div className="grid gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <p>
+                    Your support helps with maintenance, bug fixes, and course data updates.
+                  </p>
+                  <p>
+                    If you would rather report a problem or suggest a feature, use the feedback form instead.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={onClosePanel}
+                    className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+                  >
+                    Back to map
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

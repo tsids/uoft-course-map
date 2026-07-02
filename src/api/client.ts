@@ -27,6 +27,7 @@ function normalizeNode(raw: GraphNode & Record<string, unknown>): GraphNode {
     openToEngineering: pick(raw.openToEngineering, raw.open_to_engineering as boolean | undefined, true),
     isRoot: pick(raw.isRoot, raw.is_root as boolean | undefined, false),
     isGhost: pick(raw.isGhost, raw.is_ghost as boolean | undefined, false),
+    isMissing: pick(raw.isMissing, raw.is_missing as boolean | undefined, false),
     progress: typeof raw.progress === "number" ? raw.progress : undefined,
     missing: Array.isArray(raw.missing) ? raw.missing.map(String) : [],
     roles: Array.isArray(raw.roles) ? (raw.roles as GraphNodeRole[]) : [],
@@ -42,10 +43,17 @@ function normalizeBoolNode(raw: BoolGraphNode & Record<string, unknown>): BoolGr
 }
 
 function normalizeGraphResponse(
-  data: GraphResponse & { ghost_nodes?: GraphResponse["ghostNodes"]; bool_nodes?: GraphResponse["boolNodes"] },
+  data: GraphResponse & {
+    ghost_nodes?: GraphResponse["ghostNodes"];
+    missing_nodes?: GraphResponse["missingNodes"];
+    bool_nodes?: GraphResponse["boolNodes"];
+  },
 ): GraphResponse {
   const nodes = (data.nodes ?? []).map((node) => normalizeNode(node as GraphNode & Record<string, unknown>));
   const ghostNodes = (data.ghostNodes ?? data.ghost_nodes ?? []).map((node) =>
+    normalizeNode(node as GraphNode & Record<string, unknown>),
+  );
+  const missingNodes = (data.missingNodes ?? data.missing_nodes ?? []).map((node) =>
     normalizeNode(node as GraphNode & Record<string, unknown>),
   );
   const boolNodes = (data.boolNodes ?? data.bool_nodes ?? []).map((node) =>
@@ -56,14 +64,20 @@ function normalizeGraphResponse(
     nodes,
     boolNodes,
     ghostNodes,
+    missingNodes,
     edges: data.edges ?? [],
     truncated: data.truncated ?? false,
     roots: data.roots ?? [],
-    hint: data.hint ?? null,
   };
 }
 
-function buildQuery(roots: string[], filters: FilterState, engineeringStudent: boolean) {
+function buildQuery(
+  roots: string[],
+  filters: FilterState,
+  engineeringStudent: boolean,
+  recursivePostrequisites: boolean,
+  maxCourses: number,
+) {
   const params = new URLSearchParams();
 
   if (roots.length > 0) params.set("roots", roots.join(","));
@@ -73,9 +87,12 @@ function buildQuery(roots: string[], filters: FilterState, engineeringStudent: b
   if (filters.year.length > 0) params.set("year", filters.year.join(","));
   if (filters.breadth.length > 0) params.set("breadth", filters.breadth.join(","));
   if (filters.distribution.length > 0) params.set("distribution", filters.distribution.join(","));
+  if (filters.delivery.length > 0) params.set("delivery", filters.delivery.join(","));
   if (filters.session.length > 0) params.set("session", filters.session.join(","));
   if (engineeringStudent) params.set("engineering_student", "true");
   if (filters.showAllNoPrereqCourses) params.set("no_prerequisites", "true");
+  if (recursivePostrequisites) params.set("recursive", "true");
+  if (maxCourses > 0) params.set("max_nodes", String(maxCourses));
 
   return params;
 }
@@ -84,9 +101,11 @@ export async function fetchGraph(
   roots: string[],
   filters: FilterState,
   engineeringStudent: boolean,
+  recursivePostrequisites: boolean,
+  maxCourses: number,
   signal?: AbortSignal,
 ): Promise<GraphResponse> {
-  const params = buildQuery(roots, filters, engineeringStudent);
+  const params = buildQuery(roots, filters, engineeringStudent, recursivePostrequisites, maxCourses);
   const response = await fetch(`${API_BASE}/api/graph?${params.toString()}`, { signal });
 
   if (!response.ok) {

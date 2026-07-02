@@ -1,4 +1,3 @@
-import type { SettingsState } from "../types/filters";
 import type { GraphEdge, GraphNode, GraphNodeRole } from "../types/graph";
 
 export function buildNodeRoleMap(
@@ -45,7 +44,6 @@ export function buildNodeRoleMap(
 
 export function isBoolNodeVisible(
   boolNodeId: string,
-  settings: SettingsState,
   edges: GraphEdge[],
 ): boolean {
   const incident = edges.filter((edge) => edge.from === boolNodeId || edge.to === boolNodeId);
@@ -60,12 +58,11 @@ export function isBoolNodeVisible(
     return true;
   }
 
-  return hasPrerequisite && settings.showPrerequisites;
+  return hasPrerequisite;
 }
 
 export function isNodeVisible(
   node: GraphNode,
-  settings: SettingsState,
   roleMap: Map<string, Set<GraphNodeRole>>,
 ): boolean {
   const roles = roleMap.get(node.id) ?? new Set<GraphNodeRole>();
@@ -78,20 +75,19 @@ export function isNodeVisible(
     return true;
   }
 
+  // "Needed but missing" prerequisites are shown as faded context nodes.
+  if (roles.has("missing") || node.isMissing) {
+    return true;
+  }
+
   if (roles.has("noPrerequisite") || roles.has("department")) {
     return true;
   }
 
-  // Corequisites, exclusions, and prerequisites of unlocked ("required") courses
-  // are always part of the displayed chain and shown regardless of settings.
-  if (
-    roles.has("requiredPrerequisite") ||
-    roles.has("corequisite") ||
-    roles.has("exclusion")
-  ) {
+  // Corequisites and exclusions are always part of the displayed chain.
+  if (roles.has("corequisite") || roles.has("exclusion")) {
     return true;
   }
 
-  // Only the selected courses' own upward prerequisite tree is gated.
-  return roles.has("prerequisite") && settings.showPrerequisites;
+  return roles.has("prerequisite");
 }

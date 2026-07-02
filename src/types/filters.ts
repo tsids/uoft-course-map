@@ -6,6 +6,7 @@ export type FilterState = {
   year: string[];
   breadth: string[];
   distribution: string[];
+  delivery: string[];
   session: string[];
   showAllNoPrereqCourses: boolean;
 };
@@ -13,8 +14,8 @@ export type FilterState = {
 export type SettingsState = {
   showNoPrerequisites: boolean;
   engineeringStudent: boolean;
-  showPrerequisites: boolean;
-  highlightPath: boolean;
+  recursivePostrequisites: boolean;
+  maxCourses: number;
 };
 
 export const defaultFilters: FilterState = {
@@ -25,15 +26,18 @@ export const defaultFilters: FilterState = {
   year: [],
   breadth: [],
   distribution: [],
+  delivery: [],
   session: [],
   showAllNoPrereqCourses: false,
 };
 
+export const MAX_COURSES_OPTIONS = [50, 100, 250, 500] as const;
+
 export const defaultSettings: SettingsState = {
   showNoPrerequisites: false,
   engineeringStudent: false,
-  showPrerequisites: false,
-  highlightPath: true,
+  recursivePostrequisites: false,
+  maxCourses: 500,
 };
 
 export const FACULTIES = [
@@ -67,6 +71,13 @@ export const BREADTHS = [
 
 export const DISTRIBUTIONS = ["Humanities", "Science", "Social Science"] as const;
 
+export const DELIVERY_MODES = [
+  "In Person",
+  "Synchronous",
+  "Asynchronous",
+  "Hybrid",
+] as const;
+
 export function isValidBreadthFilter(value: string): boolean {
   return (BREADTHS as readonly string[]).includes(value);
 }
@@ -75,9 +86,14 @@ export function isValidDistributionFilter(value: string): boolean {
   return (DISTRIBUTIONS as readonly string[]).includes(value);
 }
 
+export function isValidDeliveryFilter(value: string): boolean {
+  return (DELIVERY_MODES as readonly string[]).includes(value);
+}
+
 export const SESSIONS = [
   "Fall",
   "Winter",
+  "Full Year",
   "Summer: F",
   "Summer: S",
   "Summer",
@@ -86,8 +102,16 @@ export const SESSIONS = [
 export const CAMPUSES = [
   "St. George",
   "Scarborough",
-  "Mississauga",
+  "University of Toronto at Mississauga",
 ];
+
+export const CAMPUS_LABELS: Record<string, string> = {
+  "University of Toronto at Mississauga": "Mississauga",
+};
+
+export function campusLabel(campus: string): string {
+  return CAMPUS_LABELS[campus] ?? campus;
+}
 
 export const STORAGE_KEYS = {
   filters: "courseMap:filters",
@@ -138,18 +162,25 @@ export function parseFilterState(stored: unknown): FilterState | null {
     filters.showAllNoPrereqCourses = storedShowAllNoPrereqCourses;
   }
 
-  const multiValueKeys: readonly ("campus" | "faculty" | "year" | "breadth" | "distribution" | "session")[] = [
-    "campus",
-    "faculty",
-    "year",
-    "breadth",
-    "distribution",
-    "session",
-  ];
+  const multiValueKeys: readonly (
+    | "campus"
+    | "faculty"
+    | "year"
+    | "breadth"
+    | "distribution"
+    | "delivery"
+    | "session"
+  )[] = ["campus", "faculty", "year", "breadth", "distribution", "delivery", "session"];
 
   for (const key of multiValueKeys) {
     const validate =
-      key === "breadth" ? isValidBreadthFilter : key === "distribution" ? isValidDistributionFilter : null;
+      key === "breadth"
+        ? isValidBreadthFilter
+        : key === "distribution"
+          ? isValidDistributionFilter
+          : key === "delivery"
+            ? isValidDeliveryFilter
+            : null;
 
     const arrayValue = readStringArray(stored[key]);
     if (arrayValue) {
@@ -172,11 +203,24 @@ export function parseSettingsState(stored: unknown): SettingsState | null {
   if (!isRecord(stored)) return null;
 
   const settings = { ...defaultSettings };
-  for (const key of Object.keys(defaultSettings) as (keyof SettingsState)[]) {
+  const booleanKeys = [
+    "showNoPrerequisites",
+    "engineeringStudent",
+    "recursivePostrequisites",
+  ] as const;
+  for (const key of booleanKeys) {
     const value = readBoolean(stored[key]);
     if (value !== null) {
       settings[key] = value;
     }
+  }
+
+  const storedMaxCourses = stored.maxCourses;
+  if (
+    typeof storedMaxCourses === "number" &&
+    (MAX_COURSES_OPTIONS as readonly number[]).includes(storedMaxCourses)
+  ) {
+    settings.maxCourses = storedMaxCourses;
   }
 
   return settings;

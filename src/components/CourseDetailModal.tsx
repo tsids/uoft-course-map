@@ -119,7 +119,7 @@ export function CourseDetailModal({ course, loading, error, onClose }: CourseDet
         role="dialog"
         aria-modal="true"
         aria-labelledby="course-detail-title"
-        className="flex max-h-[min(85vh,48rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-[#252a33]"
+        className="flex max-h-[min(85vh,48rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-surface shadow-2xl dark:border-slate-700 dark:bg-[#252a33]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-700">

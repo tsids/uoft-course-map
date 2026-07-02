@@ -1,25 +1,6 @@
-export type Side = "top" | "bottom" | "left" | "right";
-
 export type Point = { x: number; y: number };
 
-const PAD = 16;
-
-function extendFromSide(point: Point, side: Side, amount = PAD): Point {
-  switch (side) {
-    case "top":
-      return { x: point.x, y: point.y - amount };
-    case "bottom":
-      return { x: point.x, y: point.y + amount };
-    case "left":
-      return { x: point.x - amount, y: point.y };
-    case "right":
-      return { x: point.x + amount, y: point.y };
-  }
-}
-
-function isVerticalSide(side: Side) {
-  return side === "top" || side === "bottom";
-}
+const CORNER_RADIUS = 12;
 
 function samePoint(a: Point, b: Point) {
   return Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5;
@@ -54,56 +35,42 @@ function removeCollinear(points: Point[]): Point[] {
   return result;
 }
 
-export function buildOrthogonalPoints(
-  source: Point,
-  target: Point,
-  sourceSide: Side,
-  targetSide: Side,
-): Point[] {
-  const start = { ...source };
-  const end = { ...target };
-  const sourceOut = extendFromSide(start, sourceSide);
-  const targetIn = extendFromSide(end, targetSide);
+/**
+ * Turn an orthogonal polyline (e.g. an ELK edge section: start + bend points +
+ * end) into an SVG path with rounded corners. Collinear/duplicate points are
+ * collapsed first so the quadratic corner rounding never overshoots a short
+ * segment.
+ */
+export function roundedPath(points: Point[]): string {
+  const cleaned = removeCollinear(dedupePoints(points));
+  if (cleaned.length === 0) return "";
+  if (cleaned.length === 1) return `M ${cleaned[0]!.x},${cleaned[0]!.y}`;
 
-  const points: Point[] = [start, sourceOut];
+  const commands: string[] = [`M ${cleaned[0]!.x},${cleaned[0]!.y}`];
 
-  if (isVerticalSide(sourceSide) && isVerticalSide(targetSide)) {
-    const midY = (sourceOut.y + targetIn.y) / 2;
-    if (Math.abs(sourceOut.x - targetIn.x) < 1) {
-      points.push({ x: sourceOut.x, y: targetIn.y });
-    } else {
-      points.push({ x: sourceOut.x, y: midY });
-      points.push({ x: targetIn.x, y: midY });
-    }
-  } else if (!isVerticalSide(sourceSide) && !isVerticalSide(targetSide)) {
-    const midX = (sourceOut.x + targetIn.x) / 2;
-    if (Math.abs(sourceOut.y - targetIn.y) < 1) {
-      points.push({ x: targetIn.x, y: sourceOut.y });
-    } else {
-      points.push({ x: midX, y: sourceOut.y });
-      points.push({ x: midX, y: targetIn.y });
-    }
-  } else if (isVerticalSide(sourceSide)) {
-    points.push({ x: sourceOut.x, y: targetIn.y });
-  } else {
-    points.push({ x: targetIn.x, y: sourceOut.y });
+  for (let i = 1; i < cleaned.length - 1; i += 1) {
+    const prev = cleaned[i - 1]!;
+    const current = cleaned[i]!;
+    const next = cleaned[i + 1]!;
+
+    const incomingLength = Math.hypot(current.x - prev.x, current.y - prev.y);
+    const outgoingLength = Math.hypot(next.x - current.x, next.y - current.y);
+    const radius = Math.min(CORNER_RADIUS, incomingLength / 2, outgoingLength / 2);
+
+    const incomingPoint = {
+      x: current.x + (prev.x === current.x ? 0 : prev.x < current.x ? -radius : radius),
+      y: current.y + (prev.y === current.y ? 0 : prev.y < current.y ? -radius : radius),
+    };
+    const outgoingPoint = {
+      x: current.x + (next.x === current.x ? 0 : next.x < current.x ? -radius : radius),
+      y: current.y + (next.y === current.y ? 0 : next.y < current.y ? -radius : radius),
+    };
+
+    commands.push(`L ${incomingPoint.x},${incomingPoint.y}`);
+    commands.push(`Q ${current.x},${current.y} ${outgoingPoint.x},${outgoingPoint.y}`);
   }
 
-  points.push(targetIn, end);
-  return removeCollinear(dedupePoints(points));
-}
-
-export function pointsToSvgPath(points: Point[]): string {
-  if (points.length === 0) return "";
-  const [first, ...rest] = points;
-  return `M ${first!.x},${first!.y} ${rest.map((point) => `L ${point.x},${point.y}`).join(" ")}`;
-}
-
-export function buildOrthogonalPath(
-  source: Point,
-  target: Point,
-  sourceSide: Side,
-  targetSide: Side,
-): string {
-  return pointsToSvgPath(buildOrthogonalPoints(source, target, sourceSide, targetSide));
+  const last = cleaned[cleaned.length - 1]!;
+  commands.push(`L ${last.x},${last.y}`);
+  return commands.join(" ");
 }

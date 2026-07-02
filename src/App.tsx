@@ -5,6 +5,7 @@ import { CourseGraph } from "./components/CourseGraph";
 import { GraphLegend } from "./components/GraphLegend";
 import { SearchPanel } from "./components/SearchPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { Header } from "./components/Header";
 import { useCourseGraph } from "./hooks/useCourseGraph";
 import { useLocalStorageState } from "./hooks/useLocalStorageState";
 import { useTheme } from "./hooks/useTheme";
@@ -20,6 +21,7 @@ import {
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
+  const [supportPanel, setSupportPanel] = useState<"feedback" | "donate" | null>(null);
   const [filters, setFilters] = useLocalStorageState(
     STORAGE_KEYS.filters,
     defaultFilters,
@@ -40,11 +42,15 @@ export default function App() {
   const [courseDetailLoading, setCourseDetailLoading] = useState(false);
   const [courseDetailError, setCourseDetailError] = useState<string | null>(null);
 
-  const { nodes, boolNodes, ghostNodes, edges, truncated, hint, loading, error, filterOptions } = useCourseGraph(
+  const { nodes, boolNodes, ghostNodes, missingNodes, edges, truncated, loading, error, filterOptions } = useCourseGraph(
     roots,
     filters,
     settings.engineeringStudent,
+    settings.recursivePostrequisites,
+    settings.maxCourses,
   );
+
+  const statusVisible = Boolean(loading || error || resolveError || truncated);
 
   const addRoots = useCallback((codes: string[]) => {
     if (codes.length === 0) return;
@@ -124,76 +130,91 @@ export default function App() {
   }, [detailCourseCode]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden">
-      <CourseGraph
-        nodes={nodes}
-        boolNodes={boolNodes}
-        ghostNodes={ghostNodes}
-        edges={edges}
-        settings={settings}
-        selectedNodeId={selectedNodeId}
-        theme={theme}
-        onSelectNode={setSelectedNodeId}
-        onNodeDoubleClick={handleNodeDoubleClick}
-        onOpenCourseInfo={handleOpenCourseInfo}
+    <div className="flex h-full w-full flex-col overflow-hidden">
+      <Header
+        activePanel={supportPanel}
+        onOpenFeedback={() => setSupportPanel("feedback")}
+        onOpenDonate={() => setSupportPanel("donate")}
+        onClosePanel={() => setSupportPanel(null)}
+        repositoryUrl="https://github.com/tsids/uoft-course-map"
+        kofiUrl="https://ko-fi.com/tsids"
+        dataUpdatedAt={filterOptions.dataUpdatedAt}
       />
 
-      <CourseDetailModal
-        course={courseDetail}
-        loading={courseDetailLoading}
-        error={courseDetailError}
-        onClose={handleCloseCourseInfo}
-      />
-
-      {(loading || error || truncated || resolveError || hint) && (
-        <div className="pointer-events-none absolute bottom-4 left-4 z-10 rounded-md border border-slate-200 bg-white/90 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-[#252a33]/90 dark:text-slate-300">
-          {loading && "Loading courses..."}
-          {!loading && error && error}
-          {!loading && !error && resolveError && resolveError}
-          {!loading && !error && !resolveError && hint && hint}
-          {!loading && !error && !resolveError && !hint && truncated && "Graph truncated at 500 courses."}
-        </div>
-      )}
-
-      {!loading && !error && roots.length === 0 && nodes.length === 0 && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <p className="rounded-lg border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-500 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-[#252a33]/80 dark:text-slate-400">
-            Search a course to see its postrequisite tree.
-          </p>
-        </div>
-      )}
-
-      <div className="pointer-events-none absolute left-4 top-4 z-10">
-        <SearchPanel
-          filters={filters}
-          filterOptions={filterOptions}
-          roots={roots}
-          filtersExpanded={filtersExpanded}
-          onChange={(patch) => setFilters((current) => ({ ...current, ...patch }))}
-          onToggleFilters={() => setFiltersExpanded((expanded) => !expanded)}
-          onAddCourse={handleAddCourse}
-          onAddCourses={addRoots}
-          onRemoveRoot={removeRoot}
-          onClearRoots={clearRoots}
-          onResolveError={setResolveError}
-        />
-      </div>
-
-      <div className="pointer-events-none absolute right-4 top-4 z-10">
-        <SettingsPanel
-          open={settingsOpen}
-          onToggle={() => setSettingsOpen((open) => !open)}
+      <div className="relative flex-1 overflow-hidden">
+        <CourseGraph
+          nodes={nodes}
+          boolNodes={boolNodes}
+          ghostNodes={ghostNodes}
+          missingNodes={missingNodes}
+          edges={edges}
           settings={settings}
+          selectedNodeId={selectedNodeId}
           theme={theme}
-          onSettingsChange={(patch) =>
-            setSettings((current) => ({ ...current, ...patch }))
-          }
-          onToggleTheme={toggleTheme}
+          onSelectNode={setSelectedNodeId}
+          onNodeDoubleClick={handleNodeDoubleClick}
+          onAddCourse={addRoot}
+          onOpenCourseInfo={handleOpenCourseInfo}
+          statusVisible={statusVisible}
         />
-      </div>
 
-      <div className="pointer-events-none absolute bottom-4 right-4 z-10">
-        <GraphLegend theme={theme} />
+        <CourseDetailModal
+          course={courseDetail}
+          loading={courseDetailLoading}
+          error={courseDetailError}
+          onClose={handleCloseCourseInfo}
+        />
+
+        {statusVisible && (
+          <div className="pointer-events-none absolute bottom-4 left-4 z-10 rounded-md border border-slate-200 bg-surface/90 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-[#252a33]/90 dark:text-slate-300">
+            {loading && "Loading courses..."}
+            {!loading && error && error}
+            {!loading && !error && resolveError && resolveError}
+            {!loading && !error && !resolveError && truncated &&
+            `Graph truncated at ${settings.maxCourses} courses.`}
+          </div>
+        )}
+
+        {!loading && !error && roots.length === 0 && nodes.length === 0 && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <p className="rounded-lg border border-slate-200 bg-surface/80 px-4 py-3 text-sm text-slate-500 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-[#252a33]/80 dark:text-slate-400">
+              Search a course or subject area to see its postrequisite tree.
+            </p>
+          </div>
+        )}
+
+        <div className="pointer-events-none absolute left-4 top-4 z-10">
+          <SearchPanel
+            filters={filters}
+            filterOptions={filterOptions}
+            roots={roots}
+            filtersExpanded={filtersExpanded}
+            onChange={(patch) => setFilters((current) => ({ ...current, ...patch }))}
+            onToggleFilters={() => setFiltersExpanded((expanded) => !expanded)}
+            onAddCourse={handleAddCourse}
+            onAddCourses={addRoots}
+            onRemoveRoot={removeRoot}
+            onClearRoots={clearRoots}
+            onResolveError={setResolveError}
+          />
+        </div>
+
+        <div className="pointer-events-none absolute right-4 top-4 z-10">
+          <SettingsPanel
+            open={settingsOpen}
+            onToggle={() => setSettingsOpen((open) => !open)}
+            settings={settings}
+            theme={theme}
+            onSettingsChange={(patch) =>
+              setSettings((current) => ({ ...current, ...patch }))
+            }
+            onToggleTheme={toggleTheme}
+          />
+        </div>
+
+        <div className="pointer-events-none absolute bottom-4 right-4 z-10">
+          <GraphLegend theme={theme} />
+        </div>
       </div>
     </div>
   );

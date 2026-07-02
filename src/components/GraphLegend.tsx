@@ -1,3 +1,6 @@
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
+
 type GraphLegendProps = {
   theme: "light" | "dark";
 };
@@ -48,47 +51,64 @@ function LegendLine({
 
 export function GraphLegend({ theme }: GraphLegendProps) {
   const dark = theme === "dark";
+  const [open, setOpen] = useState(false);
 
   return (
-    <div className="pointer-events-auto w-[min(14rem,calc(100vw-2rem))] rounded-xl border border-slate-200/80 bg-white/95 p-3 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-[#252a33]/95">
-      <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        Legend
-      </h2>
+    <div className="pointer-events-auto w-[min(14rem,calc(100vw-2rem))] rounded-xl border border-slate-200/80 bg-surface/95 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-[#252a33]/95">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        aria-label={open ? "Collapse legend" : "Expand legend"}
+        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
+      >
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          Legend
+        </span>
+        {open ? (
+          <ChevronDown className="h-4 w-4 text-slate-400" />
+        ) : (
+          <ChevronUp className="h-4 w-4 text-slate-400" />
+        )}
+      </button>
 
-      <div className="flex flex-col gap-2">
-        <LegendSwatch label="Selected course">
-          <div className="h-5 w-9 rounded border-2 border-blue-500 bg-white ring-2 ring-blue-400/40 dark:bg-[#252a33]" />
-        </LegendSwatch>
+      {open && (
+        <div className="flex flex-col gap-2 border-t border-slate-200/70 p-3 pt-2 dark:border-slate-700/70">
+          <LegendSwatch label="Selected course">
+            <div className="h-5 w-9 rounded border-2 border-blue-500 bg-surface ring-2 ring-blue-400/40 dark:bg-[#252a33]" />
+          </LegendSwatch>
 
-        <LegendSwatch label="Unlocked postrequisite">
-          <div className="h-5 w-9 rounded border border-slate-200 bg-white dark:border-slate-700 dark:bg-[#252a33]" />
-        </LegendSwatch>
+          <LegendSwatch label="Unlocked postrequisite">
+            <div className="h-5 w-9 rounded border border-slate-200 bg-surface dark:border-slate-700 dark:bg-[#252a33]" />
+          </LegendSwatch>
 
-        <LegendSwatch label="Close match (needs more courses)">
-          <div className="h-5 w-9 rounded border border-dashed border-violet-400/70 bg-violet-50/40 opacity-80 dark:border-violet-400/50 dark:bg-violet-500/5" />
-        </LegendSwatch>
+          <LegendSwatch label="Close match (needs more courses)">
+            <div className="h-5 w-9 rounded border border-dashed border-violet-400/70 bg-violet-50/40 opacity-80 dark:border-violet-400/50 dark:bg-violet-500/5" />
+          </LegendSwatch>
 
-        <LegendSwatch label="Required prerequisite (needed, not selected)">
-          <div className="h-5 w-9 rounded border border-amber-400 bg-amber-50 dark:border-amber-500/60 dark:bg-amber-500/10" />
-        </LegendSwatch>
+          <LegendSwatch label="Needed course (not selected)">
+            <div className="h-5 w-9 rounded border border-dashed border-slate-300 bg-slate-100/50 opacity-55 dark:border-slate-600 dark:bg-slate-500/10" />
+          </LegendSwatch>
 
-        <LegendLine
-          label="Postrequisites"
-          color={dark ? "#a78bfa" : "#7c3aed"}
-          arrow
-        />
-        <LegendLine
-          label="Corequisites"
-          color={dark ? "#60a5fa" : "#2563eb"}
-          dashed
-        />
-        <LegendLine
-          label="Exclusions"
-          color={dark ? "#f87171" : "#dc2626"}
-          dashed
-          arrow
-        />
-      </div>
+          <LegendLine
+            label="Postrequisites"
+            color={dark ? "#a78bfa" : "#7c3aed"}
+            arrow
+          />
+          <LegendLine
+            label="Corequisites"
+            color={dark ? "#60a5fa" : "#2563eb"}
+            dashed
+            arrow
+          />
+          <LegendLine
+            label="Exclusions"
+            color={dark ? "#f87171" : "#dc2626"}
+            dashed
+            arrow
+          />
+        </div>
+      )}
     </div>
   );
 }
