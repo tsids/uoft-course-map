@@ -32,7 +32,9 @@ function SettingCheckbox({
       <span className="flex flex-col">
         <span className="text-sm text-slate-800 dark:text-slate-100">{label}</span>
         {description && (
-          <span className="text-xs text-slate-500 dark:text-slate-400">{description}</span>
+          <span className="hidden text-xs text-slate-500 dark:text-slate-400 md:block">
+            {description}
+          </span>
         )}
       </span>
     </label>
@@ -112,7 +114,7 @@ export function SettingsPanel({
             <label className="flex items-center justify-between gap-2 rounded-md px-1 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60">
               <span className="flex flex-col">
                 <span className="text-sm text-slate-800 dark:text-slate-100">Max courses shown</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">
+                <span className="hidden text-xs text-slate-500 dark:text-slate-400 md:block">
                   Lower this if the graph runs slowly.
                 </span>
               </span>
