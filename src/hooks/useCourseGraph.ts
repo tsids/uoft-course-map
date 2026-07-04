@@ -62,7 +62,6 @@ export function useCourseGraph(
     fetchFilterOptions(controller.signal)
       .then((options) => setFilterOptions(mergeFilterOptions(options)))
       .catch(() => {
-        // Keep the static defaults when the API is unavailable.
       });
 
     return () => controller.abort();

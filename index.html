@@ -2,9 +2,67 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/course-tree-192.png" />
+    <link rel="apple-touch-icon" href="/course-tree-180.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      // Apply the saved/preferred theme before first paint so the page never
+      // flashes its default light background while the app bundle loads.
+      // Must stay in sync with src/hooks/useTheme.ts.
+      (function () {
+        try {
+          var stored = localStorage.getItem("darkMode");
+          var dark =
+            stored === "dark" ||
+            (stored !== "light" &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) document.documentElement.classList.add("dark");
+        } catch (e) {}
+      })();
+    </script>
     <title>UofT Course Map</title>
+    <meta
+      name="description"
+      content="Explore University of Toronto courses as an interactive graph. Search a course to see its prerequisites, corequisites, exclusions, and everything it unlocks."
+    />
+    <link rel="canonical" href="https://uoftcoursemap.netlify.app/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="UofT Course Map" />
+    <meta property="og:title" content="UofT Course Map" />
+    <meta
+      property="og:description"
+      content="Explore University of Toronto courses as an interactive graph. Search a course to see its prerequisites, corequisites, exclusions, and everything it unlocks."
+    />
+    <meta property="og:url" content="https://uoftcoursemap.netlify.app/" />
+    <meta property="og:image" content="https://uoftcoursemap.netlify.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="UofT Course Map" />
+    <meta
+      name="twitter:description"
+      content="Explore University of Toronto courses as an interactive graph. Search a course to see its prerequisites, corequisites, exclusions, and everything it unlocks."
+    />
+    <meta name="twitter:image" content="https://uoftcoursemap.netlify.app/og-image.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "UofT Course Map",
+        "url": "https://uoftcoursemap.netlify.app/",
+        "description": "Explore University of Toronto courses as an interactive graph. Search a course to see its prerequisites, corequisites, exclusions, and everything it unlocks.",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Web",
+        "browserRequirements": "Requires JavaScript.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
+
     <script defer src="/stats.js" data-website-id="b7c44e29-700c-49ec-884e-c0035183a5a3"></script>
   </head>
   <body>

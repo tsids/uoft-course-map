@@ -134,6 +134,9 @@ export const STORAGE_KEYS = {
   roots: "courseMap:roots",
   compareRoots: "courseMap:compareRoots",
   compareMode: "courseMap:compareMode",
+  settingsOpen: "courseMap:settingsOpen",
+  standingOpen: "courseMap:standingOpen",
+  legendOpen: "courseMap:legendOpen",
 } as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -218,7 +221,6 @@ export function parseFilterState(stored: unknown): FilterState | null {
       continue;
     }
 
-    // Legacy single-value filters stored as a plain string.
     const legacyValue = readString(stored[key]);
     if (!legacyValue) continue;
     if (validate && !validate(legacyValue)) continue;

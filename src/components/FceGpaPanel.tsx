@@ -2,6 +2,8 @@ import { ChevronDown, RotateCcw } from "lucide-react";
 import { useState } from "react";
 
 type FceGpaPanelProps = {
+  open: boolean;
+  onToggle: () => void;
   fce: number;
   fceOverridden: boolean;
   gpa: number | null;
@@ -78,19 +80,19 @@ function NumberField({
 }
 
 export function FceGpaPanel({
+  open,
+  onToggle,
   fce,
   fceOverridden,
   gpa,
   onFceChange,
   onGpaChange,
 }: FceGpaPanelProps) {
-  const [open, setOpen] = useState(true);
-
   return (
     <div className="pointer-events-auto w-[min(15rem,calc(100vw-2rem))] rounded-xl border border-slate-200/80 bg-surface/95 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-[#252a33]/95">
       <button
         type="button"
-        onClick={() => setOpen((current) => !current)}
+        onClick={onToggle}
         aria-expanded={open}
         className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left"
       >

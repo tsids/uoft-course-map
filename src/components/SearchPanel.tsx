@@ -9,6 +9,7 @@ import {
   isValidCourseCodeFormat,
   parseCommaSeparatedCourses,
 } from "../utils/courseCode";
+import { track } from "../utils/analytics";
 
 type SearchPanelProps = {
   filters: FilterState;
@@ -601,6 +602,8 @@ export function SearchPanel({
   const submitSearch = () => {
     const query = filters.search.trim();
     if (!query) return;
+
+    track("search-query", { query });
 
     if (hasMultipleCourseCodes(query)) {
       void addCoursesFromList(query);

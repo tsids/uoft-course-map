@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { fetchCourseDetail } from "./api/client";
 import { ComparePanel } from "./components/ComparePanel";
 import { CourseDetailModal } from "./components/CourseDetailModal";
 import { FceGpaPanel } from "./components/FceGpaPanel";
-import { CourseGraph } from "./components/CourseGraph";
+const CourseGraph = lazy(() =>
+  import("./components/CourseGraph").then((module) => ({ default: module.CourseGraph })),
+);
 import { GraphLegend } from "./components/GraphLegend";
 import { SearchPanel } from "./components/SearchPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
@@ -24,6 +26,8 @@ import {
   STORAGE_KEYS,
 } from "./types/filters";
 import { totalFce } from "./utils/courseCode";
+import { track, trackFilterChange, trackSettingsChange } from "./utils/analytics";
+import type { FilterState, SettingsState } from "./types/filters";
 
 const NO_COMPARE_ROOTS: string[] = [];
 
@@ -46,7 +50,21 @@ export default function App() {
     parseAcademicState,
   );
   const [filtersExpanded, setFiltersExpanded] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useLocalStorageState(
+    STORAGE_KEYS.settingsOpen,
+    true,
+    parseBooleanFlag,
+  );
+  const [standingOpen, setStandingOpen] = useLocalStorageState(
+    STORAGE_KEYS.standingOpen,
+    true,
+    parseBooleanFlag,
+  );
+  const [legendOpen, setLegendOpen] = useLocalStorageState(
+    STORAGE_KEYS.legendOpen,
+    false,
+    parseBooleanFlag,
+  );
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [roots, setRoots] = useLocalStorageState(STORAGE_KEYS.roots, [], parseRoots);
   const [compareMode, setCompareMode] = useLocalStorageState(
@@ -89,6 +107,9 @@ export default function App() {
 
   const addRoots = useCallback((codes: string[]) => {
     if (codes.length === 0) return;
+    for (const code of codes) {
+      if (!roots.includes(code)) track("course-added", { code });
+    }
     setRoots((current) => {
       const next = [...current];
       for (const code of codes) {
@@ -106,7 +127,7 @@ export default function App() {
           }
         : current,
     );
-  }, [setFilters]);
+  }, [roots, setFilters]);
 
   const addRoot = useCallback((code: string) => {
     addRoots([code]);
@@ -140,6 +161,22 @@ export default function App() {
       addRoot(code);
     },
     [addRoot],
+  );
+
+  const handleFiltersChange = useCallback(
+    (patch: Partial<FilterState>) => {
+      trackFilterChange(filters, patch);
+      setFilters((current) => ({ ...current, ...patch }));
+    },
+    [filters, setFilters],
+  );
+
+  const handleSettingsChange = useCallback(
+    (patch: Partial<SettingsState>) => {
+      trackSettingsChange(settings, patch);
+      setSettings((current) => ({ ...current, ...patch }));
+    },
+    [settings, setSettings],
   );
 
   const toggleCompareMode = useCallback(() => {
@@ -182,6 +219,9 @@ export default function App() {
   );
 
   const handleHideCourse = useCallback((code: string) => {
+    if (!filters.excludeCourses.includes(code)) {
+      track("exclude", { type: "course", value: code });
+    }
     setFilters((current) =>
       current.excludeCourses.includes(code)
         ? current
@@ -189,7 +229,7 @@ export default function App() {
     );
     setRoots((current) => current.filter((root) => root !== code));
     setSelectedNodeIds([]);
-  }, [setFilters]);
+  }, [filters.excludeCourses, setFilters]);
 
   const handleOpenCourseInfo = useCallback((code: string) => {
     setDetailCourseCode(code);
@@ -238,22 +278,24 @@ export default function App() {
       />
 
       <div className="relative flex-1 overflow-hidden">
-        <CourseGraph
-          nodes={nodes}
-          boolNodes={boolNodes}
-          ghostNodes={ghostNodes}
-          missingNodes={missingNodes}
-          edges={edges}
-          diffMap={diff?.map ?? null}
-          settings={settings}
-          selectedNodeIds={selectedNodeIds}
-          theme={theme}
-          onSelectNode={handleSelectNode}
-          onNodeDoubleClick={handleNodeDoubleClick}
-          onAddCourse={addRoot}
-          onOpenCourseInfo={handleOpenCourseInfo}
-          onHideCourse={handleHideCourse}
-        />
+        <Suspense fallback={null}>
+          <CourseGraph
+            nodes={nodes}
+            boolNodes={boolNodes}
+            ghostNodes={ghostNodes}
+            missingNodes={missingNodes}
+            edges={edges}
+            diffMap={diff?.map ?? null}
+            settings={settings}
+            selectedNodeIds={selectedNodeIds}
+            theme={theme}
+            onSelectNode={handleSelectNode}
+            onNodeDoubleClick={handleNodeDoubleClick}
+            onAddCourse={addRoot}
+            onOpenCourseInfo={handleOpenCourseInfo}
+            onHideCourse={handleHideCourse}
+          />
+        </Suspense>
 
         <CourseDetailModal
           course={courseDetail}
@@ -275,7 +317,7 @@ export default function App() {
         {!loading && !error && roots.length === 0 && nodes.length === 0 && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <p className="rounded-lg border border-slate-200 bg-surface/80 px-4 py-3 text-sm text-slate-500 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-[#252a33]/80 dark:text-slate-400">
-              Search a course or subject area to see its postrequisite tree.
+              Search a course or subject area to get started.
             </p>
           </div>
         )}
@@ -286,7 +328,7 @@ export default function App() {
             filterOptions={filterOptions}
             roots={roots}
             filtersExpanded={filtersExpanded}
-            onChange={(patch) => setFilters((current) => ({ ...current, ...patch }))}
+            onChange={handleFiltersChange}
             onToggleFilters={() => setFiltersExpanded((expanded) => !expanded)}
             onAddCourse={handleAddCourse}
             onAddCourses={addRoots}
@@ -315,12 +357,12 @@ export default function App() {
             onToggle={() => setSettingsOpen((open) => !open)}
             settings={settings}
             theme={theme}
-            onSettingsChange={(patch) =>
-              setSettings((current) => ({ ...current, ...patch }))
-            }
+            onSettingsChange={handleSettingsChange}
             onToggleTheme={toggleTheme}
           />
           <FceGpaPanel
+            open={standingOpen}
+            onToggle={() => setStandingOpen((open) => !open)}
             fce={effectiveFce}
             fceOverridden={academic.fceOverride !== null}
             gpa={academic.gpa}
@@ -333,7 +375,12 @@ export default function App() {
         </div>
 
         <div className="pointer-events-none absolute bottom-4 right-4 z-10">
-          <GraphLegend theme={theme} compareActive={compareMode && diff !== null} />
+          <GraphLegend
+            open={legendOpen}
+            onToggle={() => setLegendOpen((open) => !open)}
+            theme={theme}
+            compareActive={compareMode && diff !== null}
+          />
         </div>
       </div>
     </div>

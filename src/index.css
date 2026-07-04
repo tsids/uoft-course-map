@@ -13,7 +13,34 @@ body,
   margin: 0;
 }
 
+html,
+body {
+  background-color: #f4f2ed;
+}
+
+html.dark,
+html.dark body {
+  background-color: #1a1d23;
+}
+
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+}
+
+.react-flow .react-flow__node,
+.react-flow .react-flow__node.selectable,
+.react-flow .react-flow__node.draggable,
+.react-flow .react-flow__edge,
+.react-flow .react-flow__edge.selectable,
+.react-flow .react-flow__node button:not(:disabled) {
+  cursor: default;
 }

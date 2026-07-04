@@ -1,4 +1,4 @@
-import ELK, { type ElkNode, type ElkPort, type ElkExtendedEdge } from "elkjs/lib/elk.bundled.js";
+import ELK, { type ElkNode, type ElkPort, type ElkExtendedEdge } from "elkjs/lib/elk-api.js";
 import type { Edge, Node } from "@xyflow/react";
 import type { BoolGraphNode, GraphEdge, GraphNode } from "../types/graph";
 import { roundedPath, type Point } from "./edgeRouting";
@@ -13,7 +13,6 @@ const MARGIN_X = 32;
 const MARGIN_Y = 32;
 const ISOLATED_GRID_MIN_COLUMNS = 6;
 const ISOLATED_GRID_MAX_COLUMNS = 14;
-/** Fallback drawing width (px) used when the caller doesn't provide the viewport size. */
 const DEFAULT_MAX_WIDTH = 1400;
 const DEFAULT_MAX_HEIGHT = 900;
 
@@ -21,7 +20,6 @@ type Side = "north" | "south" | "east" | "west";
 
 type LayoutOptions = {
   nodeVisibility: Map<string, boolean>;
-  /** Available drawing width in px; used to size the isolated-node grid. */
   viewportWidth?: number;
   viewportHeight?: number;
 };
@@ -32,7 +30,10 @@ type LayoutResult = {
   hiddenEdgeKeys: Set<string>;
 };
 
-const elk = new ELK();
+const elk = new ELK({
+  workerFactory: () =>
+    new Worker(new URL("elkjs/lib/elk-worker.min.js", import.meta.url)),
+});
 
 function edgeKey(edge: Pick<GraphEdge, "from" | "to" | "kind">) {
   return `${edge.from}|${edge.to}|${edge.kind}`;
@@ -49,12 +50,6 @@ function nodeDimensions(id: string, boolNodeIds: Set<string>) {
   return { width: COURSE_NODE_WIDTH, height: COURSE_NODE_HEIGHT };
 }
 
-/**
- * Fixed connection points. Course nodes expose all four; bool (AND/OR) nodes
- * only expose top (input) and bottom (output). Because ports are FIXED_POS,
- * every edge sharing a side funnels through the same point, so a node never
- * sprays edges from scattered spots along an edge.
- */
 function nodePorts(id: string, boolNodeIds: Set<string>): ElkPort[] {
   const { width, height } = nodeDimensions(id, boolNodeIds);
   const north: ElkPort = { id: portId(id, "north"), x: width / 2, y: 0, width: 0, height: 0 };
@@ -70,11 +65,7 @@ function nodePorts(id: string, boolNodeIds: Set<string>): ElkPort[] {
   ];
 }
 
-/** Which fixed ports an edge attaches to, given its kind. */
 function edgePorts(kind: GraphEdge["kind"]): { source: Side; target: Side } {
-  // Exclusions link mutually exclusive courses that sit on the same rank, so
-  // route them side-to-side. Everything else flows down the DAG: out the
-  // bottom of the prerequisite, into the top of the dependent course.
   if (kind === "exclusion") {
     return { source: "east", target: "west" };
   }
@@ -86,7 +77,6 @@ function isLayoutEdge(edge: GraphEdge): boolean {
     case "postrequisite":
     case "corequisite":
     case "exclusion":
-      // Chains and AND/OR connectors are always shown for the graph.
       return true;
     case "prerequisite":
       return true;
@@ -95,7 +85,6 @@ function isLayoutEdge(edge: GraphEdge): boolean {
   }
 }
 
-/** Collapse A -> B -> OR into A -> OR so the connector sits on the main spine. */
 function compressPassthroughToBool(
   edges: GraphEdge[],
   boolNodeIds: Set<string>,
@@ -143,9 +132,6 @@ function hideRedundantFanoutEdgesViaBoolNodes(
   boolNodes: BoolGraphNode[],
   boolNodeIds: Set<string>,
 ): Set<string> {
-  // If we have: Course A -> (or) B -> {C1, C2, ...}
-  // then the direct edges A -> Ci are visually redundant and create stacked stubs.
-  // Hide A -> Ci (postrequisite) and keep A -> B plus B -> Ci.
   const hidden = new Set<string>();
 
   const incoming = new Map<string, GraphEdge[]>();
@@ -181,12 +167,6 @@ function hideRedundantFanoutEdgesViaBoolNodes(
   return hidden;
 }
 
-/**
- * Nodes with no edges at all (e.g. the "show all courses with no prerequisites"
- * flood, which can add hundreds of unconnected courses) are packed into a grid
- * below the connected part of the graph instead of being handed to ELK, so they
- * don't stretch the layout arbitrarily wide.
- */
 function layoutIsolatedGrid(
   isolatedNodes: GraphNode[],
   startY: number,
@@ -217,7 +197,6 @@ function layoutIsolatedGrid(
   return positions;
 }
 
-/** Absolute polyline for an ELK edge: start point, bend points, end point. */
 function elkEdgePoints(edge: ElkExtendedEdge): Point[] | null {
   const section = edge.sections?.[0];
   if (!section) return null;
@@ -258,10 +237,8 @@ export async function layoutGraph(
   );
   const hiddenEdgeKeys = new Set<string>([...compressedHidden, ...redundantHidden]);
 
-  // Edges that are actually drawn: visible, and not collapsed away above.
   const renderEdges = visibleEdges.filter((edge) => !hiddenEdgeKeys.has(edgeKey(edge)));
 
-  // Nodes with zero edges of any kind are excluded from ELK and gridded below.
   const connectedIds = new Set<string>();
   for (const edge of visibleEdges) {
     connectedIds.add(edge.from);
@@ -313,9 +290,6 @@ export async function layoutGraph(
       }),
     ];
 
-    // Edges drawn on screen (routed + rendered) plus synthetic ranking-only
-    // edges that keep OR connectors on the spine. Synthetic ids are prefixed so
-    // we never map a rendered path onto them.
     const elkEdges: ElkExtendedEdge[] = [
       ...renderEdges.map((edge) => {
         const { source, target } = edgePorts(edge.kind);

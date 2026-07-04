@@ -26,7 +26,7 @@ function CourseNodeComponent({ data }: NodeProps) {
       className={[
         "group relative w-45 rounded-lg border px-3 py-2 text-left shadow-sm transition",
         course.isMissing
-          ? "cursor-pointer border-dashed border-slate-300 bg-[#f2f3f3] hover:border-slate-400 dark:border-slate-600 dark:bg-[#21262d] dark:hover:border-slate-500"
+          ? "border-dashed border-slate-300 bg-[#f2f3f3] hover:border-slate-400 dark:border-slate-600 dark:bg-[#21262d] dark:hover:border-slate-500"
           : course.isGhost
             ? diff === "a"
               ? "border-dashed border-orange-400/70 bg-[#f8f4ed] dark:border-orange-500/60 dark:bg-[#252122]"

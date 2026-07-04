@@ -30,11 +30,11 @@ function SupportButton({
   tone?: "neutral" | "accent";
 }) {
   const baseClasses =
-    "inline-flex items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2";
+    "inline-flex items-start justify-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium leading-none transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
   const toneClasses =
     tone === "accent"
-      ? "border-rose-200 bg-rose-500 text-white hover:bg-rose-600 focus:ring-rose-500 dark:border-rose-400/40 dark:bg-rose-500 dark:hover:bg-rose-400"
-      : "border-slate-200 bg-surface text-slate-700 hover:border-slate-300 hover:bg-slate-50 focus:ring-slate-400 dark:border-slate-700 dark:bg-[#1f242d] dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800";
+      ? "border-rose-200 bg-rose-500 text-white hover:bg-rose-600 focus-visible:ring-rose-500 dark:border-rose-400/40 dark:bg-rose-500 dark:hover:bg-rose-400"
+      : "border-slate-200 bg-surface text-slate-700 hover:border-slate-300 hover:bg-slate-50 focus-visible:ring-slate-400 dark:border-slate-700 dark:bg-[#1f242d] dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800";
 
   return (
     <button type="button" onClick={onClick} className={`${baseClasses} ${toneClasses}`}>
@@ -127,12 +127,17 @@ export function Header({
     <>
       <header className="w-full border-b border-slate-200/80 bg-surface/95 backdrop-blur dark:border-slate-700/80 dark:bg-[#1b2028]/95">
         <div className="flex w-full items-center justify-between gap-3 px-4 py-2">
-          <div className="flex min-w-0 items-baseline gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <img
+              src="/course-tree.png"
+              alt="UofT Course Map logo"
+              className="h-7 w-7 shrink-0"
+            />
             <p className="shrink-0 text-sm font-semibold text-slate-900 dark:text-slate-100">
               UofT Course Map
             </p>
             <p className="hidden truncate text-xs text-slate-500 dark:text-slate-400 sm:block">
-              An interactive map of UofT courses, their prerequisites, and postrequisites.
+              An interactive map of UofT courses.
             </p>
           </div>
 
@@ -143,12 +148,12 @@ export function Header({
               </p>
             )}
             <SupportButton onClick={onOpenFeedback}>
-              <MessageSquareText className="h-3.5 w-3.5" />
-              Bugs/Suggestions
+              <MessageSquareText className="h-3.5 w-3.5 shrink-0" />
+              <span className="mb-1">Bugs/Suggestions</span>
             </SupportButton>
             <SupportButton tone="accent" onClick={onOpenTip}>
-              <Heart className="h-3.5 w-3.5" />
-              Leave a tip
+              <Heart className="h-3.5 w-3.5 shrink-0" />
+              <span className="mb-1">Leave a tip</span>
             </SupportButton>
             <a
               href={repositoryUrl}

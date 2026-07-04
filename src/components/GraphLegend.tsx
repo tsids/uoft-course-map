@@ -1,7 +1,8 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
 
 type GraphLegendProps = {
+  open: boolean;
+  onToggle: () => void;
   theme: "light" | "dark";
   compareActive?: boolean;
 };
@@ -50,15 +51,19 @@ function LegendLine({
   );
 }
 
-export function GraphLegend({ theme, compareActive = false }: GraphLegendProps) {
+export function GraphLegend({
+  open,
+  onToggle,
+  theme,
+  compareActive = false,
+}: GraphLegendProps) {
   const dark = theme === "dark";
-  const [open, setOpen] = useState(false);
 
   return (
     <div className="pointer-events-auto w-[min(14rem,calc(100vw-2rem))] rounded-xl border border-slate-200/80 bg-surface/95 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-[#252a33]/95">
       <button
         type="button"
-        onClick={() => setOpen((current) => !current)}
+        onClick={onToggle}
         aria-expanded={open}
         aria-label={open ? "Collapse legend" : "Expand legend"}
         className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"

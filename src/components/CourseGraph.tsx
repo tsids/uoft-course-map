@@ -186,7 +186,6 @@ export function CourseGraph({
     const element = containerRef.current;
     if (!element) return;
     const update = () => {
-      // Round to reduce churn so a re-layout only happens on meaningful resizes.
       const width = Math.round(element.clientWidth / 50) * 50;
       const height = Math.round(element.clientHeight / 50) * 50;
       setViewportWidth((prev) => (prev === width ? prev : width));
@@ -273,6 +272,11 @@ export function CourseGraph({
   }, [allNodes, boolNodes, edges]);
 
   const [laidOut, setLaidOut] = useState<LayoutResult | null>(null);
+  const [layoutPending, setLayoutPending] = useState(true);
+  const [layoutProgress, setLayoutProgress] = useState(0);
+  const [progressVisible, setProgressVisible] = useState(false);
+  const wasLayoutPending = useRef(false);
+  const progressStart = useRef<number | null>(null);
 
   const layoutSignature = useMemo(() => {
     const nodeIds = allNodes.map((node) => node.id).join(",");
@@ -286,12 +290,10 @@ export function CourseGraph({
 
   const lastLayoutSignature = useRef<string | null>(null);
 
-  // ELK routing is asynchronous, so layout runs in an effect and only re-runs
-  // on structural changes. Highlight/hover styling is layered on separately
-  // below so hovering never triggers a re-layout.
   useEffect(() => {
     if (lastLayoutSignature.current === layoutSignature) return;
     let cancelled = false;
+    setLayoutPending(true);
     layoutGraph(allNodes, boolNodes, edges, {
       nodeVisibility,
       viewportWidth: viewportWidth || undefined,
@@ -303,12 +305,41 @@ export function CourseGraph({
         setLaidOut(result);
       })
       .catch(() => {
-        /* stale/aborted layout — ignore */
+      })
+      .finally(() => {
+        if (!cancelled) setLayoutPending(false);
       });
     return () => {
       cancelled = true;
     };
   }, [allNodes, boolNodes, edges, layoutSignature, nodeVisibility, viewportWidth, viewportHeight]);
+
+  useEffect(() => {
+    if (layoutPending) {
+      wasLayoutPending.current = true;
+      setProgressVisible(true);
+      if (progressStart.current === null) progressStart.current = performance.now();
+      const advance = () => {
+        const elapsed = (performance.now() - (progressStart.current ?? 0)) / 1000;
+        const x = Math.min(elapsed / 60, 1);
+        const eased = 1 - Math.pow(1 - x, 3);
+        setLayoutProgress(0.99 * eased);
+      };
+      advance();
+      const tick = window.setInterval(advance, 50);
+      return () => window.clearInterval(tick);
+    }
+
+    if (!wasLayoutPending.current) return;
+    wasLayoutPending.current = false;
+    progressStart.current = null;
+    setLayoutProgress(1);
+    const hide = window.setTimeout(() => {
+      setProgressVisible(false);
+      setLayoutProgress(0);
+    }, 350);
+    return () => window.clearTimeout(hide);
+  }, [layoutPending]);
 
   const courseById = useMemo(() => {
     const map = new Map<string, GraphNode>();
@@ -403,8 +434,6 @@ export function CourseGraph({
       const highlighted = hoverHighlighted || selectionHighlighted;
       const dimmed = isHovering && !hoverHighlighted;
       const hidden = !visible || hiddenByCompression || hiddenAsReverseDuplicate;
-      // Edges leading to a "needed but missing" prerequisite read as tentative:
-      // dashed and fainter, so the unmet branch is visually distinct.
       const touchesMissing = missingNodeIds.has(edge.source) || missingNodeIds.has(edge.target);
       const baseStyle = edgeStyle(kind, dark, highlighted, dimmed);
       const baseOpacity = hidden ? 0 : dimmed ? 0.15 : highlighted ? 1 : DEFAULT_EDGE_OPACITY;
@@ -454,8 +483,6 @@ export function CourseGraph({
     (_: React.MouseEvent, node: Node) => {
       const visible = (node.data as { visible?: boolean }).visible ?? true;
       if (!visible) return;
-      // Clicking a faded "needed" prerequisite adds it to the selection so the
-      // graph re-resolves and the course it was blocking can unlock.
       const course = (node.data as { course?: GraphNode }).course;
       if (course?.isMissing) {
         onAddCourse?.(course.code);
@@ -558,11 +585,32 @@ export function CourseGraph({
         fitViewOptions={{ padding: 0.25 }}
         minZoom={0.2}
         maxZoom={2}
+        onlyRenderVisibleElements
         proOptions={{ hideAttribution: true }}
       >
         <Background gap={20} color={dark ? "#334155" : "#cbd5e1"} />
         <Controls showInteractive={false} />
       </ReactFlow>
+
+      {progressVisible && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex w-56 flex-col gap-2.5 rounded-2xl border border-slate-200 bg-surface/95 px-4 py-3 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-[#1f242d]/95"
+          >
+            <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
+              Loading graph…
+            </div>
+            <div className="relative h-1 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+              <div
+                className="absolute inset-y-0 left-0 rounded-full bg-blue-600 transition-[width] duration-200 ease-out dark:bg-blue-400"
+                style={{ width: `${Math.round(layoutProgress * 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

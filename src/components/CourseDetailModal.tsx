@@ -141,7 +141,7 @@ export function CourseDetailModal({ course, loading, error, onClose }: CourseDet
             type="button"
             onClick={onClose}
             aria-label="Close course details"
-            className="shrink-0 rounded-md p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            className="shrink-0 cursor-default rounded-md p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           >
             <X className="h-5 w-5" />
           </button>
