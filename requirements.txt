@@ -1,0 +1,5 @@
+requests>=2.31.0
+prisma>=0.15.0
+parsy>=2.1
+python-dotenv>=1.0.0
+litestar[standard]>=2.0.0
