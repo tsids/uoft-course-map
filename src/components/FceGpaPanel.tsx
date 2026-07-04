@@ -89,17 +89,19 @@ export function FceGpaPanel({
   onGpaChange,
 }: FceGpaPanelProps) {
   return (
-    <div className="pointer-events-auto w-[min(15rem,calc(100vw-2rem))] rounded-xl border border-slate-200/80 bg-surface/95 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-[#252a33]/95">
+    <div
+      className={[
+        "pointer-events-auto rounded-xl border border-slate-200/80 bg-surface/95 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-[#252a33]/95",
+        open ? "w-[min(15rem,calc(100vw-2rem))]" : "w-auto max-w-[calc(100vw-2rem)]",
+      ].join(" ")}
+    >
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
         className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left"
       >
-        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-          Your standing
-        </span>
-        <span className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+        <span className="ml-auto flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
           {!open && (
             <span>
               FCE {fce}

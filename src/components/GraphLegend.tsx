@@ -60,7 +60,12 @@ export function GraphLegend({
   const dark = theme === "dark";
 
   return (
-    <div className="pointer-events-auto w-[min(14rem,calc(100vw-2rem))] rounded-xl border border-slate-200/80 bg-surface/95 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-[#252a33]/95">
+    <div
+      className={[
+        "pointer-events-auto rounded-xl border border-slate-200/80 bg-surface/95 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-[#252a33]/95",
+        open ? "w-[min(14rem,calc(100vw-2rem))]" : "w-auto",
+      ].join(" ")}
+    >
       <button
         type="button"
         onClick={onToggle}

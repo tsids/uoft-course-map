@@ -11,6 +11,7 @@ import { SearchPanel } from "./components/SearchPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { Header } from "./components/Header";
 import { useCourseGraph } from "./hooks/useCourseGraph";
+import { useIsMobile } from "./hooks/useIsMobile";
 import { useLocalStorageState } from "./hooks/useLocalStorageState";
 import { useTheme } from "./hooks/useTheme";
 import type { CourseDetail } from "./types/course";
@@ -33,6 +34,7 @@ const NO_COMPARE_ROOTS: string[] = [];
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
+  const isMobile = useIsMobile();
   const [supportPanel, setSupportPanel] = useState<"feedback" | "tip" | null>(null);
   const [filters, setFilters] = useLocalStorageState(
     STORAGE_KEYS.filters,
@@ -52,12 +54,12 @@ export default function App() {
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [settingsOpen, setSettingsOpen] = useLocalStorageState(
     STORAGE_KEYS.settingsOpen,
-    true,
+    !isMobile,
     parseBooleanFlag,
   );
   const [standingOpen, setStandingOpen] = useLocalStorageState(
     STORAGE_KEYS.standingOpen,
-    true,
+    !isMobile,
     parseBooleanFlag,
   );
   const [legendOpen, setLegendOpen] = useLocalStorageState(

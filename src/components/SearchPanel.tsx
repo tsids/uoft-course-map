@@ -656,7 +656,7 @@ export function SearchPanel({
         "transition-[width,background-color,border-color,box-shadow,padding] duration-200 ease-out",
         open
           ? "w-[min(42rem,calc(100vw-2rem))] border-slate-200/80 bg-surface/95 p-3 shadow-lg dark:border-slate-700/80 dark:bg-[#252a33]/95"
-          : "w-56 border-slate-200/20 bg-surface/15 p-1.5 shadow-none dark:border-slate-700/20 dark:bg-[#252a33]/15",
+          : "w-44 sm:w-56 border-slate-200/20 bg-surface/15 p-1.5 shadow-none dark:border-slate-700/20 dark:bg-[#252a33]/15",
       ].join(" ")}
     >
       <label className="flex flex-col gap-1">

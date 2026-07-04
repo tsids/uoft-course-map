@@ -2,18 +2,16 @@
   command = "npm run build"
   publish = "dist"
 
-# Proxy the Umami tracker script through our own domain so ad blockers
-# that block cloud.umami.is don't strip out analytics.
+# Proxy through our own domain
 [[redirects]]
   from = "/stats.js"
   to = "https://cloud.umami.is/script.js"
   status = 200
   force = true
 
-# The tracker derives its collect endpoint from the script's own origin,
-# so events POST to /api/send on our domain — proxy that to Umami too.
+# Send data to our own domain, then to the Umami collection gateway.
 [[redirects]]
   from = "/api/send"
-  to = "https://cloud.umami.is/api/send"
+  to = "https://gateway.umami.is/api/send"
   status = 200
   force = true

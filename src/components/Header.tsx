@@ -149,11 +149,11 @@ export function Header({
             )}
             <SupportButton onClick={onOpenFeedback}>
               <MessageSquareText className="h-3.5 w-3.5 shrink-0" />
-              <span className="mb-1">Bugs/Suggestions</span>
+              <span className="mb-1 hidden lg:inline">Bugs/Suggestions</span>
             </SupportButton>
             <SupportButton tone="accent" onClick={onOpenTip}>
               <Heart className="h-3.5 w-3.5 shrink-0" />
-              <span className="mb-1">Leave a tip</span>
+              <span className="mb-1 hidden lg:inline">Leave a tip</span>
             </SupportButton>
             <a
               href={repositoryUrl}
