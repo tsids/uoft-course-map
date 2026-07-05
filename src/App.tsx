@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react
 import { fetchCourseDetail } from "./api/client";
 import { ComparePanel } from "./components/ComparePanel";
 import { CourseDetailModal } from "./components/CourseDetailModal";
+import { DisclaimerBanner } from "./components/DisclaimerBanner";
 import { FceGpaPanel } from "./components/FceGpaPanel";
 const CourseGraph = lazy(() =>
   import("./components/CourseGraph").then((module) => ({ default: module.CourseGraph })),
@@ -19,6 +20,7 @@ import {
   defaultAcademic,
   defaultFilters,
   defaultSettings,
+  FILTERS_TTL_MS,
   parseAcademicState,
   parseBooleanFlag,
   parseFilterState,
@@ -35,11 +37,12 @@ const NO_COMPARE_ROOTS: string[] = [];
 export default function App() {
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
-  const [supportPanel, setSupportPanel] = useState<"feedback" | "tip" | null>(null);
+  const [supportPanel, setSupportPanel] = useState<"feedback" | null>(null);
   const [filters, setFilters] = useLocalStorageState(
     STORAGE_KEYS.filters,
     defaultFilters,
     parseFilterState,
+    FILTERS_TTL_MS,
   );
   const [settings, setSettings] = useLocalStorageState(
     STORAGE_KEYS.settings,
@@ -51,7 +54,12 @@ export default function App() {
     defaultAcademic,
     parseAcademicState,
   );
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [filtersExpanded, setFiltersExpanded] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      "matchMedia" in window &&
+      window.matchMedia("(min-width: 1024px)").matches,
+  );
   const [settingsOpen, setSettingsOpen] = useLocalStorageState(
     STORAGE_KEYS.settingsOpen,
     !isMobile,
@@ -272,7 +280,6 @@ export default function App() {
       <Header
         activePanel={supportPanel}
         onOpenFeedback={() => setSupportPanel("feedback")}
-        onOpenTip={() => setSupportPanel("tip")}
         onClosePanel={() => setSupportPanel(null)}
         repositoryUrl="https://github.com/tsids/uoft-course-map"
         kofiUrl="https://ko-fi.com/tsids"
@@ -385,6 +392,8 @@ export default function App() {
           />
         </div>
       </div>
+
+      <DisclaimerBanner />
     </div>
   );
 }

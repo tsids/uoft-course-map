@@ -3,12 +3,11 @@ import { useMemo, useState, type ReactNode } from "react";
 
 import { submitFeedback } from "../api/client";
 
-type SupportPanel = "feedback" | "tip" | null;
+type SupportPanel = "feedback" | null;
 
 type HeaderProps = {
   activePanel: SupportPanel;
   onOpenFeedback: () => void;
-  onOpenTip: () => void;
   onClosePanel: () => void;
   repositoryUrl: string;
   kofiUrl: string;
@@ -23,18 +22,14 @@ function buildIssueUrl(repositoryUrl: string, title: string, body: string) {
 function SupportButton({
   children,
   onClick,
-  tone = "neutral",
 }: {
   children: ReactNode;
   onClick: () => void;
-  tone?: "neutral" | "accent";
 }) {
   const baseClasses =
     "inline-flex items-start justify-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium leading-none transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
   const toneClasses =
-    tone === "accent"
-      ? "border-rose-200 bg-rose-500 text-white hover:bg-rose-600 focus-visible:ring-rose-500 dark:border-rose-400/40 dark:bg-rose-500 dark:hover:bg-rose-400"
-      : "border-slate-200 bg-surface text-slate-700 hover:border-slate-300 hover:bg-slate-50 focus-visible:ring-slate-400 dark:border-slate-700 dark:bg-[#1f242d] dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800";
+    "border-slate-200 bg-surface text-slate-700 hover:border-slate-300 hover:bg-slate-50 focus-visible:ring-slate-400 dark:border-slate-700 dark:bg-[#1f242d] dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800";
 
   return (
     <button type="button" onClick={onClick} className={`${baseClasses} ${toneClasses}`}>
@@ -46,7 +41,6 @@ function SupportButton({
 export function Header({
   activePanel,
   onOpenFeedback,
-  onOpenTip: onOpenTip,
   onClosePanel,
   repositoryUrl,
   kofiUrl,
@@ -151,10 +145,15 @@ export function Header({
               <MessageSquareText className="h-3.5 w-3.5 shrink-0" />
               <span className="mb-1 hidden md:inline">Bugs/Suggestions</span>
             </SupportButton>
-            <SupportButton tone="accent" onClick={onOpenTip}>
+            <a
+              href={kofiUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-start justify-center gap-2 rounded-full border border-rose-200 bg-rose-500 px-3 py-1.5 text-xs font-medium leading-none text-white transition hover:bg-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 dark:border-rose-400/40 dark:bg-rose-500 dark:hover:bg-rose-400"
+            >
               <Heart className="h-3.5 w-3.5 shrink-0" />
               <span className="mb-1 hidden md:inline">Leave a tip</span>
-            </SupportButton>
+            </a>
             <a
               href={repositoryUrl}
               target="_blank"
@@ -171,8 +170,7 @@ export function Header({
       {activePanel && (
         <div className="fixed inset-0 z-30 flex items-end justify-center bg-slate-950/55 px-3 py-3 backdrop-blur-sm sm:items-center">
           <div className="w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-surface shadow-2xl dark:border-slate-700 dark:bg-[#151a21]">
-            {activePanel === "feedback" ? (
-              <div className="p-5 sm:p-6">
+            <div className="p-5 sm:p-6">
                 <div className="mb-4 flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600 dark:text-blue-400">
@@ -346,73 +344,7 @@ export function Header({
                   </div>
                 </form>
                 )}
-              </div>
-            ) : (
-              <div className="grid gap-5 p-5 sm:p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-rose-600 dark:text-rose-400">
-                      Leave a tip
-                    </p>
-                    <h2 className="mt-1 text-2xl font-semibold text-slate-900 dark:text-slate-50">
-                      Support the project
-                    </h2>
-                    <p className="mt-2 max-w-xl text-sm text-slate-600 dark:text-slate-300">
-                      If this tool helps you plan courses, a small tip helps keep it maintained and improved.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={onClosePanel}
-                    className="rounded-full border border-slate-200 p-2 text-slate-500 transition hover:border-slate-300 hover:text-slate-700 dark:border-slate-700 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-200"
-                    aria-label="Close tip page"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-
-                <div className="grid gap-3 rounded-3xl border border-rose-200 bg-rose-50/60 p-4 dark:border-rose-500/20 dark:bg-rose-500/10">
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-50">
-                    Preferred support options
-                  </p>
-                  <p className="text-sm text-slate-600 dark:text-slate-300">
-                    Choose the platform that works best for you.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <a
-                      href={kofiUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 rounded-full bg-rose-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-rose-500"
-                    >
-                      <Heart className="h-4 w-4" />
-                      Tip on Ko-fi
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </div>
-                </div>
-
-                <div className="grid gap-2 text-sm text-slate-600 dark:text-slate-300">
-                  <p>
-                    Your support helps with maintenance, bug fixes, and course data updates.
-                  </p>
-                  <p>
-                    If you would rather report a problem or suggest a feature, use the feedback form instead.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={onClosePanel}
-                    className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
-                  >
-                    Back to map
-                  </button>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       )}

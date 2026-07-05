@@ -127,8 +127,12 @@ export function campusLabel(campus: string): string {
   return CAMPUS_LABELS[campus] ?? campus;
 }
 
+export const FILTERS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const DISCLAIMER_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+
 export const STORAGE_KEYS = {
   filters: "courseMap:filters",
+  disclaimerDismissed: "courseMap:disclaimerDismissed",
   settings: "courseMap:settings",
   academic: "courseMap:academic",
   roots: "courseMap:roots",

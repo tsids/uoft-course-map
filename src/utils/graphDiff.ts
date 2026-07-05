@@ -87,15 +87,17 @@ type NodeCategory = "real" | "ghost" | "missing";
 
 const CATEGORY_RANK: Record<NodeCategory, number> = { real: 0, ghost: 1, missing: 2 };
 
-function collectDownstreamIds(response: GraphResponse, downstream: Set<string>): void {
+function collectUnlockedIds(response: GraphResponse): Set<string> {
+  const unlocked = new Set<string>();
   for (const node of response.nodes) {
     if (node.isRoot) continue;
     if (!(node.roles ?? []).includes("postrequisite")) continue;
-    downstream.add(node.id);
+    unlocked.add(node.id);
   }
   for (const node of response.ghostNodes ?? []) {
-    downstream.add(node.id);
+    unlocked.add(node.id);
   }
+  return unlocked;
 }
 
 export function mergeGraphResponses(
@@ -105,8 +107,8 @@ export function mergeGraphResponses(
   const canonA = canonicalizeBoolNodes(a);
   const canonB = canonicalizeBoolNodes(b);
 
-  const realA = new Set(a.nodes.map((node) => node.id));
-  const realB = new Set(b.nodes.map((node) => node.id));
+  const unlockedA = collectUnlockedIds(a);
+  const unlockedB = collectUnlockedIds(b);
 
   const map = new Map<string, DiffSide>();
   const mark = (id: string, side: "a" | "b") => {
@@ -118,14 +120,10 @@ export function mergeGraphResponses(
     }
   };
 
-  for (const node of a.nodes) mark(node.id, "a");
-  for (const node of b.nodes) mark(node.id, "b");
-  for (const node of [...a.ghostNodes, ...(a.missingNodes ?? [])]) {
-    if (!realA.has(node.id) && !realB.has(node.id)) mark(node.id, "a");
-  }
-  for (const node of [...b.ghostNodes, ...(b.missingNodes ?? [])]) {
-    if (!realA.has(node.id) && !realB.has(node.id)) mark(node.id, "b");
-  }
+  for (const id of unlockedA) mark(id, "a");
+  for (const id of unlockedB) mark(id, "b");
+  for (const node of a.nodes) if (node.isRoot) mark(node.id, "a");
+  for (const node of b.nodes) if (node.isRoot) mark(node.id, "b");
 
   const merged = new Map<string, { node: GraphNode; category: NodeCategory }>();
   const addNode = (node: GraphNode, category: NodeCategory) => {
@@ -174,9 +172,7 @@ export function mergeGraphResponses(
     edges.push(edge);
   }
 
-  const downstream = new Set<string>();
-  collectDownstreamIds(a, downstream);
-  collectDownstreamIds(b, downstream);
+  const downstream = new Set<string>([...unlockedA, ...unlockedB]);
 
   const onlyA: string[] = [];
   const onlyB: string[] = [];

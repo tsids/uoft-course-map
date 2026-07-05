@@ -110,9 +110,10 @@ export function ComparePanel({
   useEffect(() => {
     if (!active || !expanded) return;
     const handlePointerDown = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setExpanded(false);
-      }
+      const target = event.target as Node;
+      if (containerRef.current?.contains(target)) return;
+      if ((target as Element).closest?.("[data-modal-overlay]")) return;
+      setExpanded(false);
     };
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
