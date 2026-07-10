@@ -82,6 +82,7 @@ function buildQuery(
   maxCourses: number,
   fce: number | null,
   gpa: number | null,
+  compare: boolean,
 ) {
   const params = new URLSearchParams();
 
@@ -103,6 +104,7 @@ function buildQuery(
   if (maxCourses > 0) params.set("max_nodes", String(maxCourses));
   if (fce !== null) params.set("fce", String(fce));
   if (gpa !== null) params.set("gpa", String(gpa));
+  if (compare) params.set("compare", "true");
 
   return params;
 }
@@ -115,9 +117,10 @@ export async function fetchGraph(
   maxCourses: number,
   fce: number | null,
   gpa: number | null,
+  compare: boolean = false,
   signal?: AbortSignal,
 ): Promise<GraphResponse> {
-  const params = buildQuery(roots, filters, engineeringStudent, recursivePostrequisites, maxCourses, fce, gpa);
+  const params = buildQuery(roots, filters, engineeringStudent, recursivePostrequisites, maxCourses, fce, gpa, compare);
   const response = await fetch(`${API_BASE}/api/graph?${params.toString()}`, { signal });
 
   if (!response.ok) {

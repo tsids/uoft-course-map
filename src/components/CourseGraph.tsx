@@ -24,6 +24,7 @@ type CourseGraphProps = {
   missingNodes: GraphNode[];
   edges: GraphEdge[];
   diffMap?: Map<string, DiffSide> | null;
+  campusFilter: string[];
   settings: SettingsState;
   selectedNodeIds: string[];
   theme: "light" | "dark";
@@ -46,12 +47,12 @@ const edgeTypes: EdgeTypes = {
 };
 
 function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean, dimmed: boolean) {
-  const base = highlighted ? 2.5 : 1.5;
+  const base = highlighted ? 3.5 : 1.5;
   const opacity = dimmed ? 0.15 : highlighted ? 1 : DEFAULT_EDGE_OPACITY;
 
   if (kind === "corequisite") {
     return {
-      stroke: dark ? "#60a5fa" : "#2563eb",
+      stroke: highlighted ? (dark ? "#93c5fd" : "#1d4ed8") : dark ? "#60a5fa" : "#2563eb",
       strokeWidth: base,
       strokeDasharray: "6 4",
       opacity,
@@ -59,9 +60,16 @@ function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean,
   }
   if (kind === "exclusion") {
     return {
-      stroke: dark ? "#f87171" : "#dc2626",
+      stroke: highlighted ? (dark ? "#fb923c" : "#ea580c") : dark ? "#f87171" : "#dc2626",
       strokeWidth: base,
       strokeDasharray: "4 4",
+      opacity,
+    };
+  }
+  if (highlighted) {
+    return {
+      stroke: dark ? "#34d399" : "#059669",
+      strokeWidth: base,
       opacity,
     };
   }
@@ -75,17 +83,68 @@ function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean,
   return { stroke: dark ? "#94a3b8" : "#64748b", strokeWidth: base, opacity };
 }
 
-function edgeMarkerColor(kind: GraphEdge["kind"], dark: boolean) {
-  if (kind === "exclusion") return dark ? "#f87171" : "#dc2626";
-  if (kind === "corequisite") return dark ? "#60a5fa" : "#2563eb";
+function edgeMarkerColor(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean) {
+  if (kind === "exclusion") {
+    return highlighted ? (dark ? "#fb923c" : "#ea580c") : dark ? "#f87171" : "#dc2626";
+  }
+  if (kind === "corequisite") {
+    return highlighted ? (dark ? "#93c5fd" : "#1d4ed8") : dark ? "#60a5fa" : "#2563eb";
+  }
+  if (highlighted) return dark ? "#34d399" : "#059669";
   return dark ? "#a78bfa" : "#7c3aed";
 }
 
 const DEFAULT_EDGE_OPACITY = 0.6;
+const CULL_OFFSCREEN_NODE_COUNT = 400;
+const LAYOUT_CACHE_LIMIT = 20;
+
+const layoutCache = new Map<string, LayoutResult>();
+
+function getCachedLayout(signature: string): LayoutResult | undefined {
+  const cached = layoutCache.get(signature);
+  if (cached) {
+    layoutCache.delete(signature);
+    layoutCache.set(signature, cached);
+  }
+  return cached;
+}
+
+function setCachedLayout(signature: string, result: LayoutResult) {
+  layoutCache.set(signature, result);
+  if (layoutCache.size > LAYOUT_CACHE_LIMIT) {
+    const oldest = layoutCache.keys().next().value;
+    if (oldest !== undefined) layoutCache.delete(oldest);
+  }
+}
+
+type EdgeIndex = {
+  incoming: Map<string, GraphEdge[]>;
+  outgoing: Map<string, GraphEdge[]>;
+};
+
+function buildEdgeIndex(edges: GraphEdge[]): EdgeIndex {
+  const incoming = new Map<string, GraphEdge[]>();
+  const outgoing = new Map<string, GraphEdge[]>();
+  for (const edge of edges) {
+    const into = incoming.get(edge.to);
+    if (into) {
+      into.push(edge);
+    } else {
+      incoming.set(edge.to, [edge]);
+    }
+    const outOf = outgoing.get(edge.from);
+    if (outOf) {
+      outOf.push(edge);
+    } else {
+      outgoing.set(edge.from, [edge]);
+    }
+  }
+  return { incoming, outgoing };
+}
 
 function getPrerequisitePath(
   nodeId: string,
-  edges: GraphEdge[],
+  edgeIndex: EdgeIndex,
   kinds: ReadonlySet<GraphEdge["kind"]> = new Set(["postrequisite"]),
 ): Set<string> {
   const reachable = new Set<string>([nodeId]);
@@ -93,8 +152,7 @@ function getPrerequisitePath(
 
   while (stack.length > 0) {
     const current = stack.pop()!;
-    for (const edge of edges) {
-      if (edge.to !== current) continue;
+    for (const edge of edgeIndex.incoming.get(current) ?? []) {
       if (!kinds.has(edge.kind)) continue;
       if (reachable.has(edge.from)) continue;
       reachable.add(edge.from);
@@ -107,7 +165,7 @@ function getPrerequisitePath(
 
 function getImmediatePostrequisites(
   nodeId: string,
-  edges: GraphEdge[],
+  edgeIndex: EdgeIndex,
   kinds: ReadonlySet<GraphEdge["kind"]>,
   boolNodeIds: ReadonlySet<string>,
 ): Set<string> {
@@ -117,8 +175,7 @@ function getImmediatePostrequisites(
 
   while (stack.length > 0) {
     const current = stack.pop()!;
-    for (const edge of edges) {
-      if (edge.from !== current) continue;
+    for (const edge of edgeIndex.outgoing.get(current) ?? []) {
       if (!kinds.has(edge.kind)) continue;
       if (visited.has(edge.to)) continue;
       visited.add(edge.to);
@@ -132,21 +189,45 @@ function getImmediatePostrequisites(
 
 function getDirectlyConnectedNodes(
   nodeId: string,
-  edges: GraphEdge[],
+  edgeIndex: EdgeIndex,
   kinds: ReadonlySet<GraphEdge["kind"]>,
 ): Set<string> {
   const related = new Set<string>([nodeId]);
 
-  for (const edge of edges) {
-    if (!kinds.has(edge.kind)) continue;
-    if (edge.from === nodeId) {
-      related.add(edge.to);
-    } else if (edge.to === nodeId) {
-      related.add(edge.from);
-    }
+  for (const edge of edgeIndex.outgoing.get(nodeId) ?? []) {
+    if (kinds.has(edge.kind)) related.add(edge.to);
+  }
+  for (const edge of edgeIndex.incoming.get(nodeId) ?? []) {
+    if (kinds.has(edge.kind)) related.add(edge.from);
   }
 
   return related;
+}
+
+const PROGRESS_DURATION_SECONDS = 30;
+
+function layoutProgressAt(elapsedSeconds: number): number {
+  const x = Math.min(Math.max(elapsedSeconds / PROGRESS_DURATION_SECONDS, 0), 1);
+  return 0.99 * (1 - Math.pow(1 - x, 3));
+}
+
+function depsEqual(a: readonly unknown[], b: readonly unknown[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (!Object.is(a[i], b[i])) return false;
+  }
+  return true;
+}
+
+function createStyleCache<T>() {
+  const cache = new Map<string, { deps: readonly unknown[]; styled: T }>();
+  return (id: string, deps: readonly unknown[], build: () => T): T => {
+    const cached = cache.get(id);
+    if (cached && depsEqual(cached.deps, deps)) return cached.styled;
+    const styled = build();
+    cache.set(id, { deps, styled });
+    return styled;
+  };
 }
 
 export function CourseGraph({
@@ -156,6 +237,7 @@ export function CourseGraph({
   missingNodes,
   edges,
   diffMap = null,
+  campusFilter,
   settings,
   selectedNodeIds,
   theme,
@@ -205,47 +287,58 @@ export function CourseGraph({
     [],
   );
 
+  const directEdgeKinds = useMemo(
+    () => new Set<GraphEdge["kind"]>(["corequisite", "exclusion"]),
+    [],
+  );
+
+  const edgeIndex = useMemo(() => buildEdgeIndex(edges), [edges]);
+
   const hoverHighlightedNodeIds = useMemo(() => {
     if (!hoverPathNodeId) return new Set<string>();
-    const highlighted = getPrerequisitePath(hoverPathNodeId, edges, pathEdgeKinds);
-    const relatedNodes = getDirectlyConnectedNodes(
-      hoverPathNodeId,
-      edges,
-      new Set<GraphEdge["kind"]>(["corequisite", "exclusion"]),
-    );
+    const highlighted = getPrerequisitePath(hoverPathNodeId, edgeIndex, pathEdgeKinds);
+    const relatedNodes = getDirectlyConnectedNodes(hoverPathNodeId, edgeIndex, directEdgeKinds);
 
     for (const nodeId of relatedNodes) {
       highlighted.add(nodeId);
     }
 
-    for (const nodeId of getImmediatePostrequisites(hoverPathNodeId, edges, pathEdgeKinds, boolNodeIds)) {
+    for (const nodeId of getImmediatePostrequisites(hoverPathNodeId, edgeIndex, pathEdgeKinds, boolNodeIds)) {
       highlighted.add(nodeId);
     }
 
     return highlighted;
-  }, [boolNodeIds, edges, hoverPathNodeId, pathEdgeKinds]);
+  }, [boolNodeIds, directEdgeKinds, edgeIndex, hoverPathNodeId, pathEdgeKinds]);
 
   const hoverDirectRelatedNodeIds = useMemo(() => {
     if (!hoverPathNodeId) return new Set<string>();
-    return getDirectlyConnectedNodes(
-      hoverPathNodeId,
-      edges,
-      new Set<GraphEdge["kind"]>(["corequisite", "exclusion"]),
-    );
-  }, [edges, hoverPathNodeId]);
+    return getDirectlyConnectedNodes(hoverPathNodeId, edgeIndex, directEdgeKinds);
+  }, [directEdgeKinds, edgeIndex, hoverPathNodeId]);
+
+  const selectionDirectRelatedSets = useMemo(
+    () =>
+      selectedNodeIds.map((nodeId) =>
+        getDirectlyConnectedNodes(nodeId, edgeIndex, directEdgeKinds),
+      ),
+    [directEdgeKinds, edgeIndex, selectedNodeIds],
+  );
 
   const selectionHighlightSets = useMemo(
     () =>
-      selectedNodeIds.map((nodeId) => {
-        const highlighted = getPrerequisitePath(nodeId, edges, pathEdgeKinds);
+      selectedNodeIds.map((nodeId, index) => {
+        const highlighted = getPrerequisitePath(nodeId, edgeIndex, pathEdgeKinds);
 
-        for (const relatedId of getImmediatePostrequisites(nodeId, edges, pathEdgeKinds, boolNodeIds)) {
+        for (const relatedId of selectionDirectRelatedSets[index]) {
+          highlighted.add(relatedId);
+        }
+
+        for (const relatedId of getImmediatePostrequisites(nodeId, edgeIndex, pathEdgeKinds, boolNodeIds)) {
           highlighted.add(relatedId);
         }
 
         return highlighted;
       }),
-    [boolNodeIds, edges, pathEdgeKinds, selectedNodeIds],
+    [boolNodeIds, edgeIndex, pathEdgeKinds, selectedNodeIds, selectionDirectRelatedSets],
   );
 
   const selectionHighlightedNodeIds = useMemo(() => {
@@ -260,16 +353,18 @@ export function CourseGraph({
 
   const roleMap = useMemo(() => buildNodeRoleMap(allNodes, edges), [allNodes, edges]);
 
+  const campusFilterSet = useMemo(() => new Set(campusFilter), [campusFilter]);
+
   const nodeVisibility = useMemo(() => {
     const map = new Map<string, boolean>();
     for (const node of allNodes) {
-      map.set(node.id, isNodeVisible(node, roleMap));
+      map.set(node.id, isNodeVisible(node, roleMap, campusFilterSet));
     }
     for (const boolNode of boolNodes) {
       map.set(boolNode.id, isBoolNodeVisible(boolNode.id, edges));
     }
     return map;
-  }, [allNodes, boolNodes, edges]);
+  }, [allNodes, boolNodes, campusFilterSet, edges, roleMap]);
 
   const [laidOut, setLaidOut] = useState<LayoutResult | null>(null);
   const [layoutPending, setLayoutPending] = useState(true);
@@ -293,22 +388,36 @@ export function CourseGraph({
   useEffect(() => {
     if (lastLayoutSignature.current === layoutSignature) return;
     let cancelled = false;
-    setLayoutPending(true);
-    layoutGraph(allNodes, boolNodes, edges, {
-      nodeVisibility,
-      viewportWidth: viewportWidth || undefined,
-      viewportHeight: viewportHeight || undefined,
-    })
-      .then((result) => {
-        if (cancelled) return;
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      const cached = getCachedLayout(layoutSignature);
+      if (cached) {
         lastLayoutSignature.current = layoutSignature;
-        setLaidOut(result);
+        setLaidOut(cached);
+        setLayoutPending(false);
+        return;
+      }
+      setLayoutPending(true);
+      layoutGraph(allNodes, boolNodes, edges, {
+        nodeVisibility,
+        viewportWidth: viewportWidth || undefined,
+        viewportHeight: viewportHeight || undefined,
       })
-      .catch(() => {
-      })
-      .finally(() => {
-        if (!cancelled) setLayoutPending(false);
-      });
+        .then((result) => {
+          if (cancelled) return;
+          lastLayoutSignature.current = layoutSignature;
+          setCachedLayout(layoutSignature, result);
+          setLayoutProgress(1);
+          window.setTimeout(() => {
+            if (cancelled) return;
+            setLaidOut(result);
+            setLayoutPending(false);
+          }, 250);
+        })
+        .catch(() => {
+          if (!cancelled) setLayoutPending(false);
+        });
+    });
     return () => {
       cancelled = true;
     };
@@ -317,28 +426,32 @@ export function CourseGraph({
   useEffect(() => {
     if (layoutPending) {
       wasLayoutPending.current = true;
-      setProgressVisible(true);
       if (progressStart.current === null) progressStart.current = performance.now();
       const advance = () => {
+        setProgressVisible(true);
         const elapsed = (performance.now() - (progressStart.current ?? 0)) / 1000;
-        const x = Math.min(elapsed / 60, 1);
-        const eased = 1 - Math.pow(1 - x, 3);
-        setLayoutProgress(0.99 * eased);
+        setLayoutProgress((current) => Math.max(current, layoutProgressAt(elapsed)));
       };
-      advance();
+      const first = window.setTimeout(advance, 0);
       const tick = window.setInterval(advance, 50);
-      return () => window.clearInterval(tick);
+      return () => {
+        window.clearTimeout(first);
+        window.clearInterval(tick);
+      };
     }
 
     if (!wasLayoutPending.current) return;
     wasLayoutPending.current = false;
     progressStart.current = null;
-    setLayoutProgress(1);
+    const fill = window.setTimeout(() => setLayoutProgress(1), 0);
     const hide = window.setTimeout(() => {
       setProgressVisible(false);
       setLayoutProgress(0);
     }, 350);
-    return () => window.clearTimeout(hide);
+    return () => {
+      window.clearTimeout(fill);
+      window.clearTimeout(hide);
+    };
   }, [layoutPending]);
 
   const courseById = useMemo(() => {
@@ -349,10 +462,17 @@ export function CourseGraph({
     return map;
   }, [allNodes]);
 
+  const edgeIds = useMemo(
+    () => new Set((laidOut?.edges ?? []).map((edge) => edge.id)),
+    [laidOut],
+  );
+
+  const [styleNode] = useState(() => createStyleCache<Node>());
+  const [styleEdge] = useState(() => createStyleCache<Edge>());
+
   const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
     if (!laidOut) return { nodes: [] as Node[], edges: [] as Edge[] };
     const isHovering = hoverPathNodeId !== null;
-    const edgeIds = new Set(laidOut.edges.map((edge) => edge.id));
 
     const styledNodes: Node[] = laidOut.nodes.map((node) => {
       const visible = nodeVisibility.get(node.id) ?? false;
@@ -363,7 +483,7 @@ export function CourseGraph({
 
       if (node.type === "bool") {
         const boolDimmed = isHovering && !hoverHighlighted;
-        return {
+        return styleNode(node.id, [node, visible, highlighted, boolDimmed], () => ({
           ...node,
           zIndex: 10,
           style: {
@@ -378,13 +498,27 @@ export function CourseGraph({
             highlighted: visible && highlighted,
             visible,
           },
-        };
+        }));
       }
 
       const course =
         courseById.get(node.id) ?? (node.data as { course?: GraphNode }).course;
+      const selected = visible && selectedNodeIdSet.has(node.id);
+      const diff = diffMap?.get(node.id) ?? null;
+      const deps = [
+        node,
+        course,
+        visible,
+        selected,
+        highlighted,
+        dimmed,
+        diff,
+        settings.showNoPrerequisites,
+        onOpenCourseInfo,
+        onHideCourse,
+      ];
 
-      return {
+      return styleNode(node.id, deps, () => ({
         ...node,
         zIndex: 5,
         style: {
@@ -396,16 +530,16 @@ export function CourseGraph({
         data: {
           ...(node.data as object),
           course,
-          selected: visible && selectedNodeIdSet.has(node.id),
+          selected,
           highlighted: visible && highlighted,
           dimmed: visible && dimmed,
-          diff: diffMap?.get(node.id) ?? null,
+          diff,
           showNoPrerequisites: settings.showNoPrerequisites,
           visible,
           onOpenInfo: onOpenCourseInfo,
           onHide: onHideCourse,
         },
-      };
+      }));
     });
 
     const styledEdges: Edge[] = laidOut.edges.map((edge) => {
@@ -417,7 +551,6 @@ export function CourseGraph({
       const bidirectional = kind === "corequisite" || kind === "exclusion";
       const hasReverseEdge = bidirectional && edgeIds.has(`${edge.target}|${edge.source}|${kind}`);
       const hiddenAsReverseDuplicate = hasReverseEdge && edge.source > edge.target;
-      const markerColor = edgeMarkerColor(kind, dark);
       const hoverHighlighted =
         isHovering &&
         visible &&
@@ -427,36 +560,48 @@ export function CourseGraph({
               (edge.target === hoverPathNodeId && hoverDirectRelatedNodeIds.has(edge.source)))));
       const selectionHighlighted =
         visible &&
-        pathEdgeKinds.has(kind) &&
-        selectionHighlightSets.some(
-          (set) => set.has(edge.source) && set.has(edge.target),
-        );
+        ((pathEdgeKinds.has(kind) &&
+          selectionHighlightSets.some(
+            (set) => set.has(edge.source) && set.has(edge.target),
+          )) ||
+          ((kind === "corequisite" || kind === "exclusion") &&
+            selectedNodeIds.some(
+              (nodeId, index) =>
+                (edge.source === nodeId && selectionDirectRelatedSets[index].has(edge.target)) ||
+                (edge.target === nodeId && selectionDirectRelatedSets[index].has(edge.source)),
+            )));
       const highlighted = hoverHighlighted || selectionHighlighted;
+      const markerColor = edgeMarkerColor(kind, dark, highlighted);
       const dimmed = isHovering && !hoverHighlighted;
       const hidden = !visible || hiddenByCompression || hiddenAsReverseDuplicate;
       const touchesMissing = missingNodeIds.has(edge.source) || missingNodeIds.has(edge.target);
-      const baseStyle = edgeStyle(kind, dark, highlighted, dimmed);
-      const baseOpacity = hidden ? 0 : dimmed ? 0.15 : highlighted ? 1 : DEFAULT_EDGE_OPACITY;
 
-      return {
-        ...edge,
-        hidden,
-        style: {
-          ...baseStyle,
-          ...(touchesMissing ? { strokeDasharray: "5 4" } : {}),
-          opacity: touchesMissing && !hidden && !highlighted ? baseOpacity * 0.6 : baseOpacity,
-          transition: "opacity 150ms ease",
-        },
-        markerStart:
-          hidden || !hasReverseEdge
-            ? undefined
-            : { type: "arrowclosed" as const, color: markerColor },
-        markerEnd:
-          hidden
-            ? undefined
-            : { type: "arrowclosed" as const, color: markerColor },
-        zIndex: highlighted ? 2 : 0,
-      };
+      const deps = [edge, hidden, highlighted, dimmed, touchesMissing, hasReverseEdge, dark];
+
+      return styleEdge(edge.id, deps, () => {
+        const baseStyle = edgeStyle(kind, dark, highlighted, dimmed);
+        const baseOpacity = hidden ? 0 : dimmed ? 0.15 : highlighted ? 1 : DEFAULT_EDGE_OPACITY;
+
+        return {
+          ...edge,
+          hidden,
+          style: {
+            ...baseStyle,
+            ...(touchesMissing ? { strokeDasharray: "5 4" } : {}),
+            opacity: touchesMissing && !hidden && !highlighted ? baseOpacity * 0.6 : baseOpacity,
+            transition: "opacity 150ms ease",
+          },
+          markerStart:
+            hidden || !hasReverseEdge
+              ? undefined
+              : { type: "arrowclosed" as const, color: markerColor },
+          markerEnd:
+            hidden
+              ? undefined
+              : { type: "arrowclosed" as const, color: markerColor },
+          zIndex: highlighted ? 2 : 0,
+        };
+      });
     });
 
     return { nodes: styledNodes, edges: styledEdges };
@@ -465,6 +610,7 @@ export function CourseGraph({
     courseById,
     dark,
     diffMap,
+    edgeIds,
     hoverHighlightedNodeIds,
     hoverDirectRelatedNodeIds,
     hoverPathNodeId,
@@ -472,11 +618,15 @@ export function CourseGraph({
     nodeVisibility,
     onOpenCourseInfo,
     onHideCourse,
+    selectedNodeIds,
     selectedNodeIdSet,
+    selectionDirectRelatedSets,
     selectionHighlightedNodeIds,
     selectionHighlightSets,
     settings,
     pathEdgeKinds,
+    styleNode,
+    styleEdge,
   ]);
 
   const onNodeClick = useCallback(
@@ -514,8 +664,20 @@ export function CourseGraph({
     }
   }, []);
 
+  const viewportMoving = useRef(false);
+
+  const onMoveStart = useCallback(() => {
+    viewportMoving.current = true;
+    clearSpotlightTimer();
+  }, [clearSpotlightTimer]);
+
+  const onMoveEnd = useCallback(() => {
+    viewportMoving.current = false;
+  }, []);
+
   const onNodeMouseEnter = useCallback(
     (_: React.MouseEvent, node: Node) => {
+      if (viewportMoving.current) return;
       const visible = (node.data as { visible?: boolean }).visible ?? true;
       if (!visible || node.type !== "course") return;
       clearSpotlightTimer();
@@ -581,11 +743,16 @@ export function CourseGraph({
         onNodeMouseEnter={onNodeMouseEnter}
         onNodeMouseLeave={onNodeMouseLeave}
         onPaneClick={onPaneClick}
+        onMoveStart={onMoveStart}
+        onMoveEnd={onMoveEnd}
         fitView
         fitViewOptions={{ padding: 0.25 }}
         minZoom={0.2}
         maxZoom={2}
-        onlyRenderVisibleElements
+        nodesDraggable={false}
+        nodesConnectable={false}
+        edgesFocusable={false}
+        onlyRenderVisibleElements={flowNodes.length > CULL_OFFSCREEN_NODE_COUNT}
         proOptions={{ hideAttribution: true }}
       >
         <Background gap={20} color={dark ? "#334155" : "#cbd5e1"} />

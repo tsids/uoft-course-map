@@ -13,6 +13,7 @@ type ComparePanelProps = {
   active: boolean;
   onToggle: () => void;
   rootsA: string[];
+  onRemoveA: (code: string) => void;
   rootsB: string[];
   onAddB: (codes: string[]) => void;
   onRemoveB: (code: string) => void;
@@ -90,6 +91,7 @@ export function ComparePanel({
   active,
   onToggle,
   rootsA,
+  onRemoveA,
   rootsB,
   onAddB,
   onRemoveB,
@@ -295,12 +297,15 @@ export function ComparePanel({
             {rootsA.length > 0 ? (
               <div className="flex flex-wrap items-center gap-1">
                 {rootsA.map((code) => (
-                  <span
+                  <button
                     key={code}
-                    className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-orange-700 dark:border-orange-500/40 dark:bg-orange-500/10 dark:text-orange-300"
+                    type="button"
+                    onClick={() => onRemoveA(code)}
+                    className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[11px] font-medium text-orange-700 transition hover:border-orange-300 dark:border-orange-500/40 dark:bg-orange-500/10 dark:text-orange-300"
                   >
                     {code}
-                  </span>
+                    <X className="h-3 w-3" />
+                  </button>
                 ))}
               </div>
             ) : (

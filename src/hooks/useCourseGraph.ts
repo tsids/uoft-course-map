@@ -68,71 +68,76 @@ export function useCourseGraph(
   }, []);
 
   useEffect(() => {
-    const hasQuery =
-      roots.length > 0 || filters.showAllNoPrereqCourses || filters.subjectAreas.length > 0;
-    if (!hasQuery) {
-      setNodes([]);
-      setBoolNodes([]);
-      setGhostNodes([]);
-      setMissingNodes([]);
-      setEdges([]);
-      setDiff(null);
-      setTruncated(false);
-      setError(null);
-      setLoading(false);
-      return;
-    }
-
     const controller = new AbortController();
-    setLoading(true);
-    setError(null);
 
-    const comparing = compareRoots.length > 0 && roots.length > 0;
-    const request = comparing
-      ? Promise.all([
-          fetchGraph(roots, filters, engineeringStudent, recursivePostrequisites, maxCourses, fce, gpa, controller.signal),
-          fetchGraph(compareRoots, filters, engineeringStudent, recursivePostrequisites, maxCourses, fce, gpa, controller.signal),
-        ]).then(([graphA, graphB]) => mergeGraphResponses(graphA, graphB))
-      : fetchGraph(roots, filters, engineeringStudent, recursivePostrequisites, maxCourses, fce, gpa, controller.signal)
-          .then((data) => ({ response: data, diff: null }));
+    Promise.resolve().then(() => {
+      if (controller.signal.aborted) return;
 
-    request
-      .then(({ response: data, diff: nextDiff }) => {
-        const apiNodes = data.nodes ?? [];
-        const apiGhosts = data.ghostNodes ?? [];
-        const apiMissing = data.missingNodes ?? [];
-        const filteredNodes = engineeringStudent
-          ? apiNodes.filter((node) => node.openToEngineering)
-          : apiNodes;
-        const filteredGhosts = engineeringStudent
-          ? apiGhosts.filter((node) => node.openToEngineering)
-          : apiGhosts;
-        const filteredMissing = engineeringStudent
-          ? apiMissing.filter((node) => node.openToEngineering)
-          : apiMissing;
-        setNodes(filteredNodes);
-        setBoolNodes(data.boolNodes ?? []);
-        setGhostNodes(filteredGhosts);
-        setMissingNodes(filteredMissing);
-        setEdges(data.edges ?? []);
-        setDiff(nextDiff);
-        setTruncated(data.truncated ?? false);
-      })
-      .catch((err: Error) => {
-        if (err.name === "AbortError") return;
+      const hasQuery =
+        roots.length > 0 || filters.showAllNoPrereqCourses || filters.subjectAreas.length > 0;
+      if (!hasQuery) {
         setNodes([]);
         setBoolNodes([]);
         setGhostNodes([]);
         setMissingNodes([]);
         setEdges([]);
         setDiff(null);
-        setError(err.message);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      });
+        setTruncated(false);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      const comparing = compareRoots.length > 0 && roots.length > 0;
+      const request = comparing
+        ? Promise.all([
+            fetchGraph(roots, filters, engineeringStudent, recursivePostrequisites, maxCourses, fce, gpa, true, controller.signal),
+            fetchGraph(compareRoots, filters, engineeringStudent, recursivePostrequisites, maxCourses, fce, gpa, true, controller.signal),
+          ]).then(([graphA, graphB]) => mergeGraphResponses(graphA, graphB))
+        : fetchGraph(roots, filters, engineeringStudent, recursivePostrequisites, maxCourses, fce, gpa, false, controller.signal)
+            .then((data) => ({ response: data, diff: null }));
+
+      request
+        .then(({ response: data, diff: nextDiff }) => {
+          const apiNodes = data.nodes ?? [];
+          const apiGhosts = data.ghostNodes ?? [];
+          const apiMissing = data.missingNodes ?? [];
+          const filteredNodes = engineeringStudent
+            ? apiNodes.filter((node) => node.openToEngineering)
+            : apiNodes;
+          const filteredGhosts = engineeringStudent
+            ? apiGhosts.filter((node) => node.openToEngineering)
+            : apiGhosts;
+          const filteredMissing = engineeringStudent
+            ? apiMissing.filter((node) => node.openToEngineering)
+            : apiMissing;
+          setNodes(filteredNodes);
+          setBoolNodes(data.boolNodes ?? []);
+          setGhostNodes(filteredGhosts);
+          setMissingNodes(filteredMissing);
+          setEdges(data.edges ?? []);
+          setDiff(nextDiff);
+          setTruncated(data.truncated ?? false);
+        })
+        .catch((err: Error) => {
+          if (err.name === "AbortError") return;
+          setNodes([]);
+          setBoolNodes([]);
+          setGhostNodes([]);
+          setMissingNodes([]);
+          setEdges([]);
+          setDiff(null);
+          setError(err.message);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setLoading(false);
+          }
+        });
+    });
 
     return () => controller.abort();
   }, [roots, filters, engineeringStudent, recursivePostrequisites, maxCourses, fce, gpa, compareRoots]);

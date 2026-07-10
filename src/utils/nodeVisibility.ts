@@ -64,6 +64,7 @@ export function isBoolNodeVisible(
 export function isNodeVisible(
   node: GraphNode,
   roleMap: Map<string, Set<GraphNodeRole>>,
+  campusFilter?: ReadonlySet<string>,
 ): boolean {
   const roles = roleMap.get(node.id) ?? new Set<GraphNodeRole>();
 
@@ -84,9 +85,10 @@ export function isNodeVisible(
     return true;
   }
 
-  // Corequisites and exclusions are always part of the displayed chain.
   if (roles.has("corequisite") || roles.has("exclusion")) {
-    return true;
+    if (!campusFilter || campusFilter.size === 0 || campusFilter.has(node.campus)) {
+      return true;
+    }
   }
 
   return roles.has("prerequisite");

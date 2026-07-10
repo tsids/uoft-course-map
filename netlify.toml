@@ -9,9 +9,19 @@
   status = 200
   force = true
 
-# Send data to our own domain, then to the Umami collection gateway.
+# Proxy
 [[redirects]]
   from = "/api/send"
   to = "https://gateway.umami.is/api/send"
   status = 200
   force = true
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # The sha256 hash allows the inline theme script in index.html; recompute it if that script ever changes
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-FZv2AczKwt+9bQhsekd7IR+Wonylr740q8naObuq3XM='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://backend-uoft-course-map.onrender.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"

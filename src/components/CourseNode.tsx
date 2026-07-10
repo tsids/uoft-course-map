@@ -39,7 +39,7 @@ function CourseNodeComponent({ data }: NodeProps) {
           : !course.isMissing && !course.isGhost && selected
             ? "border-fuchsia-500 ring-2 ring-fuchsia-400/50"
             : !course.isMissing && !course.isGhost && highlighted
-              ? "border-emerald-400 ring-2 ring-emerald-400/50"
+              ? "border-emerald-500 ring-[3px] ring-emerald-400/70 dark:border-emerald-400"
               : !course.isMissing && !course.isGhost
                 ? diff === "a"
                   ? "border-orange-400 dark:border-orange-500/70"
@@ -50,7 +50,7 @@ function CourseNodeComponent({ data }: NodeProps) {
         (course.isMissing || course.isGhost) && selected
           ? "border-fuchsia-500 ring-2 ring-fuchsia-400/50"
           : (course.isMissing || course.isGhost) && highlighted
-            ? "border-emerald-400 ring-2 ring-emerald-400/50"
+            ? "border-emerald-500 ring-[3px] ring-emerald-400/70 dark:border-emerald-400"
             : "",
         !course.hasPrerequisites && showNoPrerequisites
           ? "outline-2 outline-amber-400/70"

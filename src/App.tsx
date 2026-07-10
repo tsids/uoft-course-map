@@ -12,7 +12,6 @@ import { SearchPanel } from "./components/SearchPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { Header } from "./components/Header";
 import { useCourseGraph } from "./hooks/useCourseGraph";
-import { useIsMobile } from "./hooks/useIsMobile";
 import { useLocalStorageState } from "./hooks/useLocalStorageState";
 import { useTheme } from "./hooks/useTheme";
 import type { CourseDetail } from "./types/course";
@@ -36,7 +35,6 @@ const NO_COMPARE_ROOTS: string[] = [];
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
-  const isMobile = useIsMobile();
   const [supportPanel, setSupportPanel] = useState<"feedback" | null>(null);
   const [filters, setFilters] = useLocalStorageState(
     STORAGE_KEYS.filters,
@@ -62,17 +60,19 @@ export default function App() {
   );
   const [settingsOpen, setSettingsOpen] = useLocalStorageState(
     STORAGE_KEYS.settingsOpen,
-    !isMobile,
+    false,
     parseBooleanFlag,
   );
   const [standingOpen, setStandingOpen] = useLocalStorageState(
     STORAGE_KEYS.standingOpen,
-    !isMobile,
+    false,
     parseBooleanFlag,
   );
   const [legendOpen, setLegendOpen] = useLocalStorageState(
     STORAGE_KEYS.legendOpen,
-    false,
+    typeof window !== "undefined" &&
+      "matchMedia" in window &&
+      window.matchMedia("(min-width: 1024px)").matches,
     parseBooleanFlag,
   );
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
@@ -137,7 +137,7 @@ export default function App() {
           }
         : current,
     );
-  }, [roots, setFilters]);
+  }, [roots, setFilters, setRoots]);
 
   const addRoot = useCallback((code: string) => {
     addRoots([code]);
@@ -146,12 +146,12 @@ export default function App() {
   const removeRoot = useCallback((code: string) => {
     setRoots((current) => current.filter((root) => root !== code));
     setSelectedNodeIds([]);
-  }, []);
+  }, [setRoots]);
 
   const clearRoots = useCallback(() => {
     setRoots([]);
     setSelectedNodeIds([]);
-  }, []);
+  }, [setRoots]);
 
   const handleSelectNode = useCallback((id: string | null) => {
     if (id === null) {
@@ -239,7 +239,7 @@ export default function App() {
     );
     setRoots((current) => current.filter((root) => root !== code));
     setSelectedNodeIds([]);
-  }, [filters.excludeCourses, setFilters]);
+  }, [filters.excludeCourses, setFilters, setRoots]);
 
   const handleOpenCourseInfo = useCallback((code: string) => {
     setDetailCourseCode(code);
@@ -256,21 +256,24 @@ export default function App() {
     if (!detailCourseCode) return;
 
     const controller = new AbortController();
-    setCourseDetailLoading(true);
-    setCourseDetailError(null);
-    setCourseDetail(null);
+    Promise.resolve().then(() => {
+      if (controller.signal.aborted) return;
+      setCourseDetailLoading(true);
+      setCourseDetailError(null);
+      setCourseDetail(null);
 
-    fetchCourseDetail(detailCourseCode, controller.signal)
-      .then(setCourseDetail)
-      .catch((err: Error) => {
-        if (err.name === "AbortError") return;
-        setCourseDetailError(err.message);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setCourseDetailLoading(false);
-        }
-      });
+      fetchCourseDetail(detailCourseCode, controller.signal)
+        .then(setCourseDetail)
+        .catch((err: Error) => {
+          if (err.name === "AbortError") return;
+          setCourseDetailError(err.message);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setCourseDetailLoading(false);
+          }
+        });
+    });
 
     return () => controller.abort();
   }, [detailCourseCode]);
@@ -295,6 +298,7 @@ export default function App() {
             missingNodes={missingNodes}
             edges={edges}
             diffMap={diff?.map ?? null}
+            campusFilter={filters.campus}
             settings={settings}
             selectedNodeIds={selectedNodeIds}
             theme={theme}
@@ -349,6 +353,7 @@ export default function App() {
             active={compareMode}
             onToggle={toggleCompareMode}
             rootsA={roots}
+            onRemoveA={removeRoot}
             rootsB={compareRoots}
             onAddB={addCompareRoots}
             onRemoveB={removeCompareRoot}

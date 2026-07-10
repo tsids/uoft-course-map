@@ -401,16 +401,18 @@ export function SearchPanel({
   useEffect(() => {
     const query = filters.search.trim();
     if (query.length < 2 || hasMultipleCourseCodes(query)) {
-      setSuggestions([]);
-      setSuggestionsLoading(false);
-      setActiveIndex(-1);
-      return;
+      const clear = window.setTimeout(() => {
+        setSuggestions([]);
+        setSuggestionsLoading(false);
+        setActiveIndex(-1);
+      }, 0);
+      return () => window.clearTimeout(clear);
     }
 
     const controller = new AbortController();
-    setSuggestionsLoading(true);
 
     const timer = window.setTimeout(() => {
+      setSuggestionsLoading(true);
       resolveCourses(query, controller.signal)
         .then(({ matches }) => {
           setSuggestions(matches);

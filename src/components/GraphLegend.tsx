@@ -122,6 +122,10 @@ export function GraphLegend({
             <div className="h-5 w-9 rounded border-2 border-blue-500 bg-surface ring-2 ring-blue-400/40 dark:bg-[#252a33]" />
           </LegendSwatch>
 
+          <LegendSwatch label="Clicked course (path highlighted)">
+            <div className="h-5 w-9 rounded border-2 border-fuchsia-500 bg-surface ring-2 ring-fuchsia-400/50 dark:bg-[#252a33]" />
+          </LegendSwatch>
+
           <LegendSwatch label="Close match (needs more courses)">
             <div className="h-5 w-9 rounded border border-dashed border-violet-400/70 bg-violet-50/40 opacity-80 dark:border-violet-400/50 dark:bg-violet-500/5" />
           </LegendSwatch>

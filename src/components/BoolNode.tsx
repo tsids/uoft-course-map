@@ -15,7 +15,7 @@ function BoolNodeComponent({ data }: NodeProps) {
       className={[
         "flex h-8 w-12 items-center justify-center rounded-full border-2 text-[11px] font-bold uppercase shadow-sm",
         highlighted
-          ? "border-emerald-500 bg-surface text-emerald-700 ring-2 ring-emerald-400/40"
+          ? "border-emerald-500 bg-surface text-emerald-700 ring-[3px] ring-emerald-400/60"
           : "border-slate-900 bg-surface text-slate-900 dark:border-white dark:bg-white dark:text-slate-900",
       ].join(" ")}
     >

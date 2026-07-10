@@ -256,10 +256,6 @@ export async function layoutGraph(
     (options.viewportHeight ?? DEFAULT_MAX_HEIGHT) - MARGIN_Y * 2,
   );
   const aspectRatio = Math.min(Math.max(maxWidth / maxHeight, 0.5), 3);
-  const layerWidthBound = Math.max(
-    4,
-    Math.ceil(((maxWidth + NODE_SEP) / (COURSE_NODE_WIDTH + NODE_SEP)) * 1.5),
-  );
 
   const positions = new Map<string, { x: number; y: number }>();
   const pathById = new Map<string, string>();
@@ -317,8 +313,7 @@ export async function layoutGraph(
         "elk.edgeRouting": "ORTHOGONAL",
         "elk.aspectRatio": String(aspectRatio),
         "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
-        "elk.layered.layering.strategy": "MIN_WIDTH",
-        "elk.layered.layering.minWidth.upperBoundOnWidth": String(layerWidthBound),
+        "elk.layered.layering.strategy": "NETWORK_SIMPLEX",
         "elk.layered.spacing.nodeNodeBetweenLayers": String(RANK_SEP),
         "elk.spacing.nodeNode": String(NODE_SEP),
         "elk.spacing.edgeNode": "24",

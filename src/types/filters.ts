@@ -128,7 +128,6 @@ export function campusLabel(campus: string): string {
 }
 
 export const FILTERS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-export const DISCLAIMER_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
 export const STORAGE_KEYS = {
   filters: "courseMap:filters",
