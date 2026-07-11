@@ -206,7 +206,7 @@ function getDirectlyConnectedNodes(
 
 const PROGRESS_DURATION_SECONDS = 30;
 
-function layoutProgressAt(elapsedSeconds: number): number {
+function progressBarLoadingCourses(elapsedSeconds: number): number {
   const x = Math.min(Math.max(elapsedSeconds / PROGRESS_DURATION_SECONDS, 0), 1);
   return 0.99 * (1 - Math.pow(1 - x, 3));
 }
@@ -430,7 +430,7 @@ export function CourseGraph({
       const advance = () => {
         setProgressVisible(true);
         const elapsed = (performance.now() - (progressStart.current ?? 0)) / 1000;
-        setLayoutProgress((current) => Math.max(current, layoutProgressAt(elapsed)));
+        setLayoutProgress((current) => Math.max(current, progressBarLoadingCourses(elapsed)));
       };
       const first = window.setTimeout(advance, 0);
       const tick = window.setInterval(advance, 50);

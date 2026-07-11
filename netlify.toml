@@ -9,13 +9,6 @@
   status = 200
   force = true
 
-# Proxy
-[[redirects]]
-  from = "/api/send"
-  to = "https://gateway.umami.is/api/send"
-  status = 200
-  force = true
-
 [[headers]]
   for = "/*"
   [headers.values]
