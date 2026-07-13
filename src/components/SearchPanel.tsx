@@ -995,7 +995,7 @@ export function SearchPanel({
               key={code}
               type="button"
               onClick={() => onRemoveRoot(code)}
-              className="inline-flex items-center gap-1 rounded-full border border-yellow-300 bg-yellow-50 px-2 py-0.5 text-xs font-medium text-yellow-800 transition hover:border-yellow-400 dark:border-yellow-500/40 dark:bg-yellow-500/10 dark:text-yellow-300"
+              className="inline-flex items-center gap-1 rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-800 transition hover:border-blue-400 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300"
             >
               {code}
               <X className="h-3 w-3" />

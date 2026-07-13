@@ -119,29 +119,20 @@ export function GraphLegend({
           )}
 
           <LegendSwatch label="Selected course">
-            <div className="h-5 w-9 rounded border-2 border-yellow-400 bg-surface ring-2 ring-yellow-300/60 dark:border-yellow-300 dark:bg-[#252a33] dark:ring-yellow-300/40" />
+            <div className="h-5 w-9 rounded border-2 border-blue-500 bg-surface ring-2 ring-blue-400/40 dark:bg-[#252a33]" />
           </LegendSwatch>
 
           <LegendSwatch label="Clicked course (path highlighted)">
             <div className="h-5 w-9 rounded border-2 border-fuchsia-500 bg-surface ring-2 ring-fuchsia-400/50 dark:bg-[#252a33]" />
           </LegendSwatch>
 
-          <LegendSwatch label="Close match (needs more courses)">
-            <div className="h-5 w-9 rounded border border-dashed border-violet-400/70 bg-violet-50/40 opacity-80 dark:border-violet-400/50 dark:bg-violet-500/5" />
+          <LegendSwatch label="Postrequisites">
+            <div className="h-5 w-9 rounded border border-purple-300 bg-surface dark:border-purple-400/70 dark:bg-[#252a33]" />
           </LegendSwatch>
 
-          <LegendSwatch label="Needed course (not selected)">
-            <div className="h-5 w-9 rounded border border-dashed border-blue-400/70 bg-surface dark:border-blue-400/50 dark:bg-[#252a33]" />
-          </LegendSwatch>
-
-          <LegendLine
-            label="Postrequisites"
-            color={dark ? "#a78bfa" : "#7c3aed"}
-            arrow
-          />
           <LegendLine
             label="Corequisites"
-            color={dark ? "#60a5fa" : "#2563eb"}
+            color={dark ? "#7dd3fc" : "#38bdf8"}
             dashed
             arrow
           />

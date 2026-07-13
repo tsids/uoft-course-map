@@ -53,7 +53,7 @@ function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean,
 
   if (kind === "corequisite") {
     return {
-      stroke: highlighted ? (dark ? "#93c5fd" : "#1d4ed8") : dark ? "#60a5fa" : "#2563eb",
+      stroke: highlighted ? (dark ? "#bae6fd" : "#0ea5e9") : dark ? "#7dd3fc" : "#38bdf8",
       strokeWidth: base,
       strokeDasharray: "6 4",
       opacity,
@@ -61,7 +61,7 @@ function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean,
   }
   if (kind === "exclusion") {
     return {
-      stroke: highlighted ? (dark ? "#fb923c" : "#ea580c") : dark ? "#f87171" : "#dc2626",
+      stroke: highlighted ? (dark ? "#fca5a5" : "#b91c1c") : dark ? "#f87171" : "#dc2626",
       strokeWidth: base,
       strokeDasharray: "4 4",
       opacity,
@@ -76,7 +76,7 @@ function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean,
   }
   if (kind === "postrequisite") {
     return {
-      stroke: dark ? "#a78bfa" : "#7c3aed",
+      stroke: dark ? "#c084fc" : "#9333ea",
       strokeWidth: base,
       opacity,
     };
@@ -86,13 +86,16 @@ function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean,
 
 function edgeMarkerColor(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean) {
   if (kind === "exclusion") {
-    return highlighted ? (dark ? "#fb923c" : "#ea580c") : dark ? "#f87171" : "#dc2626";
+    return highlighted ? (dark ? "#fca5a5" : "#b91c1c") : dark ? "#f87171" : "#dc2626";
   }
   if (kind === "corequisite") {
-    return highlighted ? (dark ? "#93c5fd" : "#1d4ed8") : dark ? "#60a5fa" : "#2563eb";
+    return highlighted ? (dark ? "#bae6fd" : "#0ea5e9") : dark ? "#7dd3fc" : "#38bdf8";
   }
   if (highlighted) return dark ? "#34d399" : "#059669";
-  return dark ? "#a78bfa" : "#7c3aed";
+  if (kind === "prerequisite") {
+    return dark ? "#94a3b8" : "#64748b";
+  }
+  return dark ? "#c084fc" : "#9333ea";
 }
 
 const DEFAULT_EDGE_OPACITY = 0.6;
@@ -611,6 +614,12 @@ export function CourseGraph({
         courseById.get(node.id) ?? (node.data as { course?: GraphNode }).course;
       const selected = visible && selectedNodeIdSet.has(node.id);
       const diff = diffMap?.get(node.id) ?? null;
+      const nodeRoles = roleMap.get(node.id);
+      const roleTint: "prerequisite" | "postrequisite" | null = nodeRoles?.has("postrequisite")
+        ? "postrequisite"
+        : nodeRoles?.has("prerequisite") || nodeRoles?.has("requiredPrerequisite")
+          ? "prerequisite"
+          : null;
       const deps = [
         node,
         course,
@@ -619,6 +628,7 @@ export function CourseGraph({
         highlighted,
         dimmed,
         diff,
+        roleTint,
         settings.showNoPrerequisites,
         onAddCourse,
         onOpenCourseInfo,
@@ -641,6 +651,7 @@ export function CourseGraph({
           highlighted: visible && highlighted,
           dimmed: visible && dimmed,
           diff,
+          roleTint,
           showNoPrerequisites: settings.showNoPrerequisites,
           visible,
           onAdd: onAddCourse,
@@ -728,6 +739,7 @@ export function CourseGraph({
     onAddCourse,
     onOpenCourseInfo,
     onHideCourse,
+    roleMap,
     selectedNodeIds,
     selectedNodeIdSet,
     selectionDirectRelatedSets,

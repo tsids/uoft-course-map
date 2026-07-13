@@ -9,6 +9,7 @@ export type CourseNodeData = {
   highlighted?: boolean;
   dimmed?: boolean;
   diff?: DiffSide | null;
+  roleTint?: "prerequisite" | "postrequisite" | null;
   showNoPrerequisites?: boolean;
   visible?: boolean;
   onOpenInfo?: (code: string) => void;
@@ -17,8 +18,19 @@ export type CourseNodeData = {
 };
 
 function CourseNodeComponent({ data }: NodeProps) {
-  const { course, selected, highlighted, dimmed, diff, showNoPrerequisites, onOpenInfo, onHide, onAdd } =
+  const { course, selected, highlighted, dimmed, diff, roleTint, showNoPrerequisites, onOpenInfo, onHide, onAdd } =
     data as CourseNodeData;
+
+  const kind: "prerequisite" | "postrequisite" | null = course.isGhost
+    ? "postrequisite"
+    : course.isMissing
+      ? "prerequisite"
+      : roleTint ?? null;
+
+  const roleBorder =
+    kind === "postrequisite"
+      ? "border-purple-300 dark:border-purple-400/70"
+      : "border-slate-200 dark:border-slate-700";
   const rootRef = useRef<HTMLDivElement>(null);
   const addRef = useRef<(() => void) | null>(null);
 
@@ -45,33 +57,20 @@ function CourseNodeComponent({ data }: NodeProps) {
       ref={rootRef}
       className={[
         "group relative w-45 rounded-lg border px-3 py-2 text-left shadow-sm transition",
-        course.isMissing
-          ? "border-dashed border-blue-400/70 bg-surface hover:border-blue-500 dark:border-blue-400/50 dark:bg-[#252a33] dark:hover:border-blue-400"
-          : course.isGhost
-            ? diff === "a"
-              ? "border-dashed border-orange-400/70 bg-[#f8f4ed] dark:border-orange-500/60 dark:bg-[#252122]"
-              : diff === "b"
-                ? "border-dashed border-rose-400/70 bg-[#f8f2ef] dark:border-rose-500/60 dark:bg-[#251f26]"
-                : "border-dashed border-violet-400/70 bg-[#f4f2f4] dark:border-violet-400/50 dark:bg-[#20202e]"
-            : "bg-surface dark:bg-[#252a33]",
-        !course.isMissing && !course.isGhost && course.isRoot
-          ? "border-yellow-400 ring-2 ring-yellow-300/60 dark:border-yellow-300 dark:ring-yellow-300/40"
-          : !course.isMissing && !course.isGhost && selected
-            ? "border-fuchsia-500 ring-2 ring-fuchsia-400/50"
-            : !course.isMissing && !course.isGhost && highlighted
-              ? "border-emerald-500 ring-[3px] ring-emerald-400/70 dark:border-emerald-400"
-              : !course.isMissing && !course.isGhost
-                ? diff === "a"
-                  ? "border-orange-400 dark:border-orange-500/70"
-                  : diff === "b"
-                    ? "border-rose-400 dark:border-rose-500/70"
-                    : "border-slate-200 dark:border-slate-700"
-                : "",
-        (course.isMissing || course.isGhost) && selected
+        kind === "postrequisite"
+          ? "bg-[#f4f2f4] dark:bg-[#20202e]"
+          : "bg-surface dark:bg-[#252a33]",
+        selected
           ? "border-fuchsia-500 ring-2 ring-fuchsia-400/50"
-          : (course.isMissing || course.isGhost) && highlighted
-            ? "border-emerald-500 ring-[3px] ring-emerald-400/70 dark:border-emerald-400"
-            : "",
+          : course.isRoot
+            ? "border-blue-500 ring-2 ring-blue-400/40"
+            : highlighted
+              ? "border-emerald-500 ring-[3px] ring-emerald-400/70 dark:border-emerald-400"
+              : diff === "a"
+                ? "border-orange-400 dark:border-orange-500/70"
+                : diff === "b"
+                  ? "border-rose-400 dark:border-rose-500/70"
+                  : roleBorder,
         !course.hasPrerequisites && showNoPrerequisites
           ? "outline-2 outline-amber-400/70"
           : "",
@@ -163,15 +162,15 @@ function CourseNodeComponent({ data }: NodeProps) {
           const needs = [...(course.missingConditions ?? []), ...(course.missing ?? [])];
           if (needs.length === 0) return null;
           return (
-            <div className="mt-1 text-[10px] text-violet-600 dark:text-violet-300">
+            <div className="mt-1 text-[10px] text-purple-500 dark:text-purple-200">
               Needs {needs.slice(0, 2).join(", ")}
               {needs.length > 2 ? "…" : ""}
             </div>
           );
         })()}
       {course.isMissing && (
-        <div className="mt-1 text-[10px] font-medium text-blue-600 dark:text-blue-400">
-          Not selected — double-click to add
+        <div className="mt-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+          Not selected - double-click to add
         </div>
       )}
     </div>
