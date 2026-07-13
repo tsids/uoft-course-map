@@ -327,10 +327,12 @@ export default function App() {
           </div>
         )}
 
-        {!loading && !error && roots.length === 0 && nodes.length === 0 && (
+        {!loading && !error && nodes.length === 0 && ghostNodes.length === 0 && missingNodes.length === 0 && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <p className="rounded-lg border border-slate-200 bg-surface/80 px-4 py-3 text-sm text-slate-500 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-[#252a33]/80 dark:text-slate-400">
-              Search a course or subject area to get started.
+            <p className="pointer-events-auto select-text rounded-xl border border-slate-200 bg-surface/80 px-6 py-4 text-base text-slate-500 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-[#252a33]/80 dark:text-slate-400">
+              {roots.length === 0 && !filters.showAllNoPrereqCourses && filters.subjectAreas.length === 0
+                ? "Search a course or subject area to get started."
+                : "No courses match the current filters. Try removing or relaxing some filters."}
             </p>
           </div>
         )}
