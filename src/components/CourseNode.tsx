@@ -122,7 +122,7 @@ function CourseNodeComponent({ data }: NodeProps) {
         <button
           type="button"
           aria-label={`Add ${course.code} to your selected courses`}
-          title={`Add ${course.code} to your courses (or double-click)`}
+          title={`Add ${course.code} to your courses (or double click)`}
           onClick={(event) => {
             event.stopPropagation();
             onAdd(course.code);
@@ -170,7 +170,7 @@ function CourseNodeComponent({ data }: NodeProps) {
         })()}
       {course.isMissing && (
         <div className="mt-1 text-[10px] font-medium italic text-slate-500 dark:text-slate-400">
-          Not selected - double-click to add
+          Not selected
         </div>
       )}
     </div>

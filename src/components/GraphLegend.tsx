@@ -148,7 +148,7 @@ export function GraphLegend({
               <span className="font-medium">Click</span> - highlight path
             </span>
             <span>
-              <span className="font-medium">Double-click</span> - add course
+              <span className="font-medium">Double click</span> - add course
             </span>
             <span>
               <span className="font-medium">Hover</span> - preview connections
