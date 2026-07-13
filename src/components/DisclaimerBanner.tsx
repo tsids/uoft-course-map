@@ -30,15 +30,14 @@ export function DisclaimerBanner() {
       <div className="pointer-events-auto flex w-full max-w-3xl items-start gap-3 rounded-2xl border border-amber-200 bg-surface/95 p-4 shadow-lg backdrop-blur dark:border-amber-500/30 dark:bg-[#1b2028]/95">
         <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500 dark:text-amber-400" />
         <p className="min-w-0 flex-1 text-sm text-slate-600 dark:text-slate-300">
-          Always make sure to double check prerequisites and course details with the official UofT
-          Timetable at{" "}
+          Always double check prerequisites and course details with the official{" "}
           <a
             href="https://ttb.utoronto.ca"
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline dark:text-blue-400"
           >
-            ttb.utoronto.ca
+            UofT Timetable
             <ExternalLink className="h-3.5 w-3.5" />
           </a>
           .
