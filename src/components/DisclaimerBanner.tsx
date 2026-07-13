@@ -27,8 +27,8 @@ export function DisclaimerBanner() {
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-3 sm:px-4 sm:pb-4">
-      <div className="pointer-events-auto flex w-full max-w-3xl items-start gap-3 rounded-2xl border border-amber-200 bg-surface/95 p-4 shadow-lg backdrop-blur dark:border-amber-500/30 dark:bg-[#1b2028]/95">
-        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500 dark:text-amber-400" />
+      <div className="pointer-events-auto flex max-w-3xl items-center gap-3 rounded-2xl border border-amber-200 bg-surface/95 px-4 py-3 shadow-lg backdrop-blur dark:border-amber-500/30 dark:bg-[#1b2028]/95">
+        <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500 dark:text-amber-400" />
         <p className="min-w-0 flex-1 text-sm text-slate-600 dark:text-slate-300">
           Always double check prerequisites and course details with the official{" "}
           <a
