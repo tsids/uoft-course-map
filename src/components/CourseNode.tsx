@@ -61,7 +61,7 @@ function CourseNodeComponent({ data }: NodeProps) {
           ? "bg-[#f4f2f4] dark:bg-[#20202e]"
           : "bg-surface dark:bg-[#252a33]",
         selected
-          ? "border-fuchsia-500 ring-2 ring-fuchsia-400/50"
+          ? "border-yellow-400 ring-2 ring-yellow-300/50 dark:border-yellow-300"
           : course.isRoot
             ? "border-blue-500 ring-2 ring-blue-400/40"
             : highlighted

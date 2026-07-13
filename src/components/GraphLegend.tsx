@@ -123,7 +123,7 @@ export function GraphLegend({
           </LegendSwatch>
 
           <LegendSwatch label="Clicked course (path highlighted)">
-            <div className="h-5 w-9 rounded border-2 border-fuchsia-500 bg-surface ring-2 ring-fuchsia-400/50 dark:bg-[#252a33]" />
+            <div className="h-5 w-9 rounded border-2 border-yellow-400 bg-surface ring-2 ring-yellow-300/50 dark:border-yellow-300 dark:bg-[#252a33]" />
           </LegendSwatch>
 
           <LegendSwatch label="Postrequisites">
@@ -145,13 +145,13 @@ export function GraphLegend({
 
           <div className="mt-1 flex flex-col gap-1 border-t border-slate-200/70 pt-2 text-xs text-slate-600 dark:border-slate-700/70 dark:text-slate-300">
             <span>
-              <span className="font-medium">Click</span> — highlight path
+              <span className="font-medium">Click</span> - highlight path
             </span>
             <span>
-              <span className="font-medium">Double-click</span> — add course
+              <span className="font-medium">Double-click</span> - add course
             </span>
             <span>
-              <span className="font-medium">Hover</span> — preview connections
+              <span className="font-medium">Hover</span> - preview connections
             </span>
           </div>
         </div>

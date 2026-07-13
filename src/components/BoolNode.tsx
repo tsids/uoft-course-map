@@ -22,7 +22,7 @@ function BoolNodeComponent({ data }: NodeProps) {
       className={[
         "group relative flex h-8 w-12 cursor-pointer items-center justify-center rounded-full border-2 text-[11px] font-bold uppercase shadow-sm",
         selected
-          ? "border-fuchsia-500 bg-surface text-fuchsia-700 ring-2 ring-fuchsia-400/50 dark:bg-white"
+          ? "border-yellow-400 bg-surface text-yellow-700 ring-2 ring-yellow-300/50 dark:bg-white"
           : highlighted
             ? "border-emerald-500 bg-surface text-emerald-700 ring-[3px] ring-emerald-400/60"
             : "border-slate-900 bg-surface text-slate-900 dark:border-white dark:bg-white dark:text-slate-900",
