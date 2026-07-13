@@ -72,7 +72,7 @@ function CourseNodeComponent({ data }: NodeProps) {
                   ? "border-rose-400 dark:border-rose-500/70"
                   : roleBorder,
         !course.hasPrerequisites && showNoPrerequisites
-          ? "outline-2 outline-amber-400/70"
+          ? "outline-2 outline-fuchsia-500/70"
           : "",
         dimmed ? "opacity-35" : "opacity-100",
       ].join(" ")}

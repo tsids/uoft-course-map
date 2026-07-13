@@ -15,6 +15,7 @@ import { useCourseGraph } from "./hooks/useCourseGraph";
 import { useLocalStorageState } from "./hooks/useLocalStorageState";
 import { useTheme } from "./hooks/useTheme";
 import type { CourseDetail } from "./types/course";
+import type { GraphEdge } from "./types/graph";
 import {
   defaultAcademic,
   defaultFilters,
@@ -32,6 +33,19 @@ import { track, trackFilterChange, trackSettingsChange } from "./utils/analytics
 import type { FilterState, SettingsState } from "./types/filters";
 
 const NO_COMPARE_ROOTS: string[] = [];
+
+const TOGGLEABLE_EDGE_KINDS: GraphEdge["kind"][] = [
+  "prerequisite",
+  "corequisite",
+  "exclusion",
+];
+
+function parseHiddenEdgeKinds(stored: unknown): GraphEdge["kind"][] | null {
+  if (!Array.isArray(stored)) return null;
+  return stored.filter((kind): kind is GraphEdge["kind"] =>
+    TOGGLEABLE_EDGE_KINDS.includes(kind as GraphEdge["kind"]),
+  );
+}
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
@@ -69,6 +83,21 @@ export default function App() {
       "matchMedia" in window &&
       window.matchMedia("(min-width: 1024px)").matches,
     parseBooleanFlag,
+  );
+  const [hiddenEdgeKinds, setHiddenEdgeKinds] = useLocalStorageState<GraphEdge["kind"][]>(
+    STORAGE_KEYS.hiddenEdgeKinds,
+    [],
+    parseHiddenEdgeKinds,
+  );
+  const handleToggleEdgeKind = useCallback(
+    (kind: GraphEdge["kind"]) => {
+      setHiddenEdgeKinds((current) =>
+        current.includes(kind)
+          ? current.filter((k) => k !== kind)
+          : [...current, kind],
+      );
+    },
+    [setHiddenEdgeKinds],
   );
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [roots, setRoots] = useLocalStorageState(STORAGE_KEYS.roots, [], parseRoots);
@@ -288,6 +317,7 @@ export default function App() {
             campusFilter={filters.campus}
             settings={settings}
             selectedNodeIds={selectedNodeIds}
+            hiddenEdgeKinds={hiddenEdgeKinds}
             theme={theme}
             fitViewKey={`${roots.join(",")}::${activeCompareRoots.join(",")}::${filters.subjectAreas.join(",")}::${filters.showAllNoPrereqCourses}`}
             onSelectNode={handleSelectNode}
@@ -383,6 +413,8 @@ export default function App() {
             onToggle={() => setLegendOpen((open) => !open)}
             theme={theme}
             compareActive={compareMode && diff !== null}
+            hiddenEdgeKinds={hiddenEdgeKinds}
+            onToggleEdgeKind={handleToggleEdgeKind}
           />
         </div>
       </div>

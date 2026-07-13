@@ -1,10 +1,13 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
+import type { GraphEdge } from "../types/graph";
 
 type GraphLegendProps = {
   open: boolean;
   onToggle: () => void;
   theme: "light" | "dark";
   compareActive?: boolean;
+  hiddenEdgeKinds: GraphEdge["kind"][];
+  onToggleEdgeKind: (kind: GraphEdge["kind"]) => void;
 };
 
 function LegendSwatch({
@@ -22,32 +25,53 @@ function LegendSwatch({
   );
 }
 
-function LegendLine({
+function EdgeToggle({
   label,
   color,
   dashed,
-  arrow,
+  hidden,
+  onToggle,
 }: {
   label: string;
   color: string;
   dashed?: boolean;
-  arrow?: boolean;
+  hidden: boolean;
+  onToggle: () => void;
 }) {
   return (
-    <LegendSwatch label={label}>
-      <svg width="36" height="10" aria-hidden="true">
-        <line
-          x1="2"
-          y1="5"
-          x2="30"
-          y2="5"
-          stroke={color}
-          strokeWidth="2"
-          strokeDasharray={dashed ? "5 3" : undefined}
-        />
-        {arrow && <polygon points="30,5 24,2 24,8" fill={color} />}
-      </svg>
-    </LegendSwatch>
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={!hidden}
+      title={hidden ? `Show ${label.toLowerCase()}` : `Hide ${label.toLowerCase()}`}
+      className={[
+        "-mx-1 flex items-center gap-2.5 rounded-md px-1 py-0.5 text-left transition hover:bg-slate-100 dark:hover:bg-slate-700/50",
+        hidden ? "opacity-40" : "",
+      ].join(" ")}
+    >
+      <div className="flex h-7 w-10 shrink-0 items-center justify-center">
+        <svg width="36" height="10" aria-hidden="true">
+          <line
+            x1="2"
+            y1="5"
+            x2="30"
+            y2="5"
+            stroke={color}
+            strokeWidth="2"
+            strokeDasharray={dashed ? "5 3" : undefined}
+          />
+          <polygon points="30,5 24,2 24,8" fill={color} />
+        </svg>
+      </div>
+      <span
+        className={[
+          "text-xs text-slate-600 dark:text-slate-300",
+          hidden ? "line-through" : "",
+        ].join(" ")}
+      >
+        {label}
+      </span>
+    </button>
   );
 }
 
@@ -56,8 +80,11 @@ export function GraphLegend({
   onToggle,
   theme,
   compareActive = false,
+  hiddenEdgeKinds,
+  onToggleEdgeKind,
 }: GraphLegendProps) {
   const dark = theme === "dark";
+  const isHidden = (kind: GraphEdge["kind"]) => hiddenEdgeKinds.includes(kind);
 
   return (
     <div
@@ -130,18 +157,31 @@ export function GraphLegend({
             <div className="h-5 w-9 rounded border border-purple-300 bg-surface dark:border-purple-400/70 dark:bg-[#252a33]" />
           </LegendSwatch>
 
-          <LegendLine
-            label="Corequisites"
-            color={dark ? "#7dd3fc" : "#38bdf8"}
-            dashed
-            arrow
-          />
-          <LegendLine
-            label="Exclusions"
-            color={dark ? "#f87171" : "#dc2626"}
-            dashed
-            arrow
-          />
+          <div className="mt-1 flex flex-col gap-1 border-t border-slate-200/70 pt-2 dark:border-slate-700/70">
+            <span className="text-[11px] text-slate-400 dark:text-slate-500">
+              Relationships — tap to show/hide
+            </span>
+            <EdgeToggle
+              label="Prerequisites"
+              color={dark ? "#94a3b8" : "#64748b"}
+              hidden={isHidden("prerequisite")}
+              onToggle={() => onToggleEdgeKind("prerequisite")}
+            />
+            <EdgeToggle
+              label="Corequisites"
+              color={dark ? "#7dd3fc" : "#38bdf8"}
+              dashed
+              hidden={isHidden("corequisite")}
+              onToggle={() => onToggleEdgeKind("corequisite")}
+            />
+            <EdgeToggle
+              label="Exclusions"
+              color={dark ? "#fb923c" : "#ea580c"}
+              dashed
+              hidden={isHidden("exclusion")}
+              onToggle={() => onToggleEdgeKind("exclusion")}
+            />
+          </div>
 
           <div className="mt-1 flex flex-col gap-1 border-t border-slate-200/70 pt-2 text-xs text-slate-600 dark:border-slate-700/70 dark:text-slate-300">
             <span>

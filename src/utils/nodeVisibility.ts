@@ -93,3 +93,40 @@ export function isNodeVisible(
 
   return roles.has("prerequisite");
 }
+
+export function buildPrereqCollapseKeepSet(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  roleMap: Map<string, Set<GraphNodeRole>>,
+): Set<string> {
+  const keep = new Set<string>();
+
+  for (const node of nodes) {
+    const roles = roleMap.get(node.id);
+    if (
+      node.isRoot ||
+      roles?.has("root") ||
+      roles?.has("noPrerequisite") ||
+      roles?.has("department")
+    ) {
+      keep.add(node.id);
+    }
+  }
+
+  for (const edge of edges) {
+    if (edge.kind === "postrequisite") {
+      keep.add(edge.from);
+      keep.add(edge.to);
+    }
+  }
+
+  const anchored = new Set(keep);
+  for (const edge of edges) {
+    if (edge.kind === "corequisite" || edge.kind === "exclusion") {
+      if (anchored.has(edge.from)) keep.add(edge.to);
+      if (anchored.has(edge.to)) keep.add(edge.from);
+    }
+  }
+
+  return keep;
+}

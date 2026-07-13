@@ -13,7 +13,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BoolGraphNode, DiffSide, GraphEdge, GraphNode } from "../types/graph";
 import type { SettingsState } from "../types/filters";
 import { layoutGraph } from "../utils/graphLayout";
-import { buildNodeRoleMap, isBoolNodeVisible, isNodeVisible } from "../utils/nodeVisibility";
+import {
+  buildNodeRoleMap,
+  buildPrereqCollapseKeepSet,
+  isBoolNodeVisible,
+  isNodeVisible,
+} from "../utils/nodeVisibility";
 import { BoolNode } from "./BoolNode";
 import { CourseEdge } from "./CourseEdge";
 import { CourseNode } from "./CourseNode";
@@ -28,6 +33,7 @@ type CourseGraphProps = {
   campusFilter: string[];
   settings: SettingsState;
   selectedNodeIds: string[];
+  hiddenEdgeKinds?: GraphEdge["kind"][];
   theme: "light" | "dark";
   fitViewKey: string;
   onSelectNode: (id: string | null) => void;
@@ -61,7 +67,7 @@ function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean,
   }
   if (kind === "exclusion") {
     return {
-      stroke: highlighted ? (dark ? "#fca5a5" : "#b91c1c") : dark ? "#f87171" : "#dc2626",
+      stroke: highlighted ? (dark ? "#fdba74" : "#c2410c") : dark ? "#fb923c" : "#ea580c",
       strokeWidth: base,
       strokeDasharray: "4 4",
       opacity,
@@ -86,7 +92,7 @@ function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean,
 
 function edgeMarkerColor(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean) {
   if (kind === "exclusion") {
-    return highlighted ? (dark ? "#fca5a5" : "#b91c1c") : dark ? "#f87171" : "#dc2626";
+    return highlighted ? (dark ? "#fdba74" : "#c2410c") : dark ? "#fb923c" : "#ea580c";
   }
   if (kind === "corequisite") {
     return highlighted ? (dark ? "#bae6fd" : "#0ea5e9") : dark ? "#7dd3fc" : "#38bdf8";
@@ -268,6 +274,7 @@ export function CourseGraph({
   campusFilter,
   settings,
   selectedNodeIds,
+  hiddenEdgeKinds,
   theme,
   fitViewKey,
   onSelectNode,
@@ -276,6 +283,10 @@ export function CourseGraph({
   onHideCourse,
 }: CourseGraphProps) {
   const dark = theme === "dark";
+  const hiddenEdgeKindSet = useMemo(
+    () => new Set<GraphEdge["kind"]>(hiddenEdgeKinds ?? []),
+    [hiddenEdgeKinds],
+  );
   const [spotlightNodeId, setSpotlightNodeId] = useState<string | null>(null);
   const spotlightIdRef = useRef<string | null>(null);
   const spotlightTimer = useRef<number | null>(null);
@@ -393,16 +404,26 @@ export function CourseGraph({
 
   const campusFilterSet = useMemo(() => new Set(campusFilter), [campusFilter]);
 
+  const hidePrerequisites = hiddenEdgeKindSet.has("prerequisite");
+
+  const prereqCollapseKeepSet = useMemo(
+    () =>
+      hidePrerequisites ? buildPrereqCollapseKeepSet(allNodes, edges, roleMap) : null,
+    [hidePrerequisites, allNodes, edges, roleMap],
+  );
+
   const nodeVisibility = useMemo(() => {
     const map = new Map<string, boolean>();
+    const collapsed = (id: string) =>
+      prereqCollapseKeepSet !== null && !prereqCollapseKeepSet.has(id);
     for (const node of allNodes) {
-      map.set(node.id, isNodeVisible(node, roleMap, campusFilterSet));
+      map.set(node.id, !collapsed(node.id) && isNodeVisible(node, roleMap, campusFilterSet));
     }
     for (const boolNode of boolNodes) {
-      map.set(boolNode.id, isBoolNodeVisible(boolNode.id, edges));
+      map.set(boolNode.id, !collapsed(boolNode.id) && isBoolNodeVisible(boolNode.id, edges));
     }
     return map;
-  }, [allNodes, boolNodes, campusFilterSet, edges, roleMap]);
+  }, [allNodes, boolNodes, campusFilterSet, edges, roleMap, prereqCollapseKeepSet]);
 
   const [laidOut, setLaidOut] = useState<LayoutResult | null>(null);
   const [layoutPending, setLayoutPending] = useState(true);
@@ -692,7 +713,8 @@ export function CourseGraph({
       const highlighted = hoverHighlighted || selectionHighlighted;
       const markerColor = edgeMarkerColor(kind, dark, highlighted);
       const dimmed = isHovering && !hoverHighlighted;
-      const hidden = !visible || hiddenByCompression || hiddenAsReverseDuplicate;
+      const hidden =
+        !visible || hiddenByCompression || hiddenAsReverseDuplicate || hiddenEdgeKindSet.has(kind);
       const touchesMissing = missingNodeIds.has(edge.source) || missingNodeIds.has(edge.target);
 
       const deps = [edge, hidden, highlighted, dimmed, touchesMissing, hasReverseEdge, dark];
@@ -731,6 +753,7 @@ export function CourseGraph({
     dark,
     diffMap,
     edgeIds,
+    hiddenEdgeKindSet,
     hoverHighlightedNodeIds,
     hoverDirectRelatedNodeIds,
     hoverPathNodeId,

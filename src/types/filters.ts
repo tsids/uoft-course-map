@@ -140,6 +140,7 @@ export const STORAGE_KEYS = {
   settingsOpen: "settingsOpen",
   standingOpen: "standingOpen",
   legendOpen: "legendOpen",
+  hiddenEdgeKinds: "hiddenEdgeKinds",
 } as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
