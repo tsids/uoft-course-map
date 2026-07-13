@@ -27,7 +27,7 @@ function SettingCheckbox({
         type="checkbox"
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
-        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+        className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-blue-600 focus:ring-blue-500"
       />
       <span className="flex flex-col">
         <span className="text-sm text-slate-800 dark:text-slate-100">{label}</span>

@@ -177,7 +177,7 @@ function MultiSelectField({
                   type="checkbox"
                   checked={values.includes(option)}
                   onChange={() => toggleValue(option)}
-                  className="h-3.5 w-3.5 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-[#1f242d]"
+                  className="h-3.5 w-3.5 shrink-0 rounded border-slate-300 accent-blue-600 focus:ring-blue-500 dark:border-slate-600"
                 />
                 <span className="truncate">{optionLabels?.[option] ?? option}</span>
               </label>
@@ -685,7 +685,7 @@ export function SearchPanel({
               aria-expanded={showSuggestions}
               aria-autocomplete="list"
               aria-controls="course-suggestions"
-              placeholder={open ? "Search by code or name (comma-separated)..." : "Search courses..."}
+              placeholder={open ? "Search by code or name (e.g. CSC108H1, CSC148H1)..." : "Search courses..."}
               value={filters.search}
               onChange={(event) => {
                 onChange({ search: event.target.value });
@@ -740,8 +740,8 @@ export function SearchPanel({
               className={[
                 "w-full rounded-md border py-2 pl-8 pr-2 text-sm outline-none transition-colors duration-200",
                 open
-                  ? "border-slate-200 bg-surface text-slate-800 placeholder:text-slate-400 focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100"
-                  : "border-transparent bg-transparent text-slate-500 placeholder:text-slate-400/80 focus:border-slate-200/40 dark:text-slate-400 dark:placeholder:text-slate-500/80 dark:focus:border-slate-600/40",
+                  ? "border-slate-200 bg-surface text-black placeholder:text-slate-500 focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100 dark:placeholder:text-slate-400"
+                  : "border-transparent bg-transparent text-black placeholder:text-slate-500/80 focus:border-slate-200/40 dark:text-slate-400 dark:placeholder:text-slate-500/80 dark:focus:border-slate-600/40",
               ].join(" ")}
             />
 
@@ -824,7 +824,7 @@ export function SearchPanel({
           type="checkbox"
           checked={filters.showAllNoPrereqCourses}
           onChange={(event) => onChange({ showAllNoPrereqCourses: event.target.checked })}
-          className="h-3.5 w-3.5 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-[#1f242d]"
+          className="h-3.5 w-3.5 shrink-0 rounded border-slate-300 accent-blue-600 focus:ring-blue-500 dark:border-slate-600"
         />
         <span className="truncate text-xs text-slate-600 dark:text-slate-300">
           Show all courses with no prerequisites
@@ -863,7 +863,7 @@ export function SearchPanel({
               open
                 ? filters.subjectAreas.length > 0
                   ? "Add another subject area..."
-                  : "Search by subject area (comma-separated)..."
+                  : "Search by subject area (e.g. Computer Science, Mathematics)..."
                 : filters.subjectAreas.length > 0
                   ? `${filters.subjectAreas.length} area${filters.subjectAreas.length === 1 ? "" : "s"}`
                   : "Subject area..."
@@ -932,8 +932,8 @@ export function SearchPanel({
             className={[
               "w-full rounded-md border py-2 pl-8 pr-2 text-sm outline-none transition-colors duration-200",
               open
-                ? "border-slate-200 bg-surface text-slate-800 placeholder:text-slate-400 focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100"
-                : "border-transparent bg-transparent text-slate-500 placeholder:text-slate-400/80 focus:border-slate-200/40 dark:text-slate-400 dark:placeholder:text-slate-500/80 dark:focus:border-slate-600/40",
+                ? "border-slate-200 bg-surface text-black placeholder:text-slate-500 focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100 dark:placeholder:text-slate-400"
+                : "border-transparent bg-transparent text-black placeholder:text-slate-500/80 focus:border-slate-200/40 dark:text-slate-400 dark:placeholder:text-slate-500/80 dark:focus:border-slate-600/40",
             ].join(" ")}
           />
 

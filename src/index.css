@@ -16,11 +16,13 @@ body,
 html,
 body {
   background-color: #f4f2ed;
+  color-scheme: light;
 }
 
 html.dark,
 html.dark body {
   background-color: #1a1d23;
+  color-scheme: dark;
 }
 
 body {
