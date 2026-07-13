@@ -163,6 +163,30 @@ function getPrerequisitePath(
   return reachable;
 }
 
+function getImmediatePrerequisites(
+  nodeId: string,
+  edgeIndex: EdgeIndex,
+  kinds: ReadonlySet<GraphEdge["kind"]>,
+  boolNodeIds: ReadonlySet<string>,
+): Set<string> {
+  const related = new Set<string>();
+  const visited = new Set<string>([nodeId]);
+  const stack = [nodeId];
+
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    for (const edge of edgeIndex.incoming.get(current) ?? []) {
+      if (!kinds.has(edge.kind)) continue;
+      if (visited.has(edge.from)) continue;
+      visited.add(edge.from);
+      related.add(edge.from);
+      if (boolNodeIds.has(edge.from)) stack.push(edge.from);
+    }
+  }
+
+  return related;
+}
+
 function getImmediatePostrequisites(
   nodeId: string,
   edgeIndex: EdgeIndex,
@@ -296,7 +320,12 @@ export function CourseGraph({
 
   const hoverHighlightedNodeIds = useMemo(() => {
     if (!hoverPathNodeId) return new Set<string>();
-    const highlighted = getPrerequisitePath(hoverPathNodeId, edgeIndex, pathEdgeKinds);
+    const highlighted = boolNodeIds.has(hoverPathNodeId)
+      ? new Set([
+          hoverPathNodeId,
+          ...getImmediatePrerequisites(hoverPathNodeId, edgeIndex, pathEdgeKinds, boolNodeIds),
+        ])
+      : getPrerequisitePath(hoverPathNodeId, edgeIndex, pathEdgeKinds);
     const relatedNodes = getDirectlyConnectedNodes(hoverPathNodeId, edgeIndex, directEdgeKinds);
 
     for (const nodeId of relatedNodes) {
@@ -326,7 +355,12 @@ export function CourseGraph({
   const selectionHighlightSets = useMemo(
     () =>
       selectedNodeIds.map((nodeId, index) => {
-        const highlighted = getPrerequisitePath(nodeId, edgeIndex, pathEdgeKinds);
+        const highlighted = boolNodeIds.has(nodeId)
+          ? new Set([
+              nodeId,
+              ...getImmediatePrerequisites(nodeId, edgeIndex, pathEdgeKinds, boolNodeIds),
+            ])
+          : getPrerequisitePath(nodeId, edgeIndex, pathEdgeKinds);
 
         for (const relatedId of selectionDirectRelatedSets[index]) {
           highlighted.add(relatedId);
@@ -467,6 +501,49 @@ export function CourseGraph({
     [laidOut],
   );
 
+  const boolNodeInfo = useMemo(() => {
+    const operatorById = new Map(boolNodes.map((node) => [node.id, node.operator]));
+    const label = (id: string) => courseById.get(id)?.code ?? id;
+
+    const describe = (id: string, depth: number): string => {
+      const operator = operatorById.get(id);
+      if (!operator) return label(id);
+      if (depth >= 2) return "…";
+      const parts = (edgeIndex.incoming.get(id) ?? []).map((edge) =>
+        describe(edge.from, depth + 1),
+      );
+      return `(${parts.join(operator === "or" ? " or " : " and ")})`;
+    };
+
+    const unlocksOf = (id: string): string[] => {
+      const result: string[] = [];
+      const visited = new Set([id]);
+      const stack = [id];
+      while (stack.length > 0) {
+        const current = stack.pop()!;
+        for (const edge of edgeIndex.outgoing.get(current) ?? []) {
+          if (visited.has(edge.to)) continue;
+          visited.add(edge.to);
+          if (operatorById.has(edge.to)) {
+            stack.push(edge.to);
+          } else {
+            result.push(label(edge.to));
+          }
+        }
+      }
+      return result;
+    };
+
+    const map = new Map<string, { inputs: string[]; unlocks: string[] }>();
+    for (const boolNode of boolNodes) {
+      const inputs = (edgeIndex.incoming.get(boolNode.id) ?? []).map((edge) =>
+        describe(edge.from, 0),
+      );
+      map.set(boolNode.id, { inputs, unlocks: unlocksOf(boolNode.id) });
+    }
+    return map;
+  }, [boolNodes, courseById, edgeIndex]);
+
   const [styleNode] = useState(() => createStyleCache<Node>());
   const [styleEdge] = useState(() => createStyleCache<Edge>());
 
@@ -483,9 +560,11 @@ export function CourseGraph({
 
       if (node.type === "bool") {
         const boolDimmed = isHovering && !hoverHighlighted;
-        return styleNode(node.id, [node, visible, highlighted, boolDimmed], () => ({
+        const boolSelected = visible && selectedNodeIdSet.has(node.id);
+        const info = boolNodeInfo.get(node.id);
+        return styleNode(node.id, [node, visible, highlighted, boolDimmed, boolSelected, info], () => ({
           ...node,
-          zIndex: 10,
+          zIndex: highlighted || boolSelected ? 20 : 10,
           style: {
             opacity: visible ? (boolDimmed ? 0.35 : 1) : 0,
             transition: "opacity 150ms ease",
@@ -496,7 +575,10 @@ export function CourseGraph({
           data: {
             ...(node.data as object),
             highlighted: visible && highlighted,
+            selected: boolSelected,
             visible,
+            inputs: info?.inputs,
+            unlocks: info?.unlocks,
           },
         }));
       }
@@ -607,6 +689,7 @@ export function CourseGraph({
     return { nodes: styledNodes, edges: styledEdges };
   }, [
     laidOut,
+    boolNodeInfo,
     courseById,
     dark,
     diffMap,
@@ -679,7 +762,7 @@ export function CourseGraph({
     (_: React.MouseEvent, node: Node) => {
       if (viewportMoving.current) return;
       const visible = (node.data as { visible?: boolean }).visible ?? true;
-      if (!visible || node.type !== "course") return;
+      if (!visible || (node.type !== "course" && node.type !== "bool")) return;
       clearSpotlightTimer();
       const delay = spotlightIdRef.current !== null ? 100 : 200;
       spotlightTimer.current = window.setTimeout(() => {

@@ -318,7 +318,7 @@ export default function App() {
         />
 
         {statusVisible && (
-          <div className="pointer-events-none absolute bottom-4 left-14 z-10 rounded-md border border-slate-200 bg-surface/90 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-[#252a33]/90 dark:text-slate-300">
+          <div className={`pointer-events-none absolute bottom-4 ${nodes.length + ghostNodes.length + missingNodes.length > 0 ? "left-14" : "left-4"} z-10 rounded-md border border-slate-200 bg-surface/90 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-[#252a33]/90 dark:text-slate-300`}>
             {loading && "Loading courses..."}
             {!loading && error && error}
             {!loading && !error && resolveError && resolveError}
