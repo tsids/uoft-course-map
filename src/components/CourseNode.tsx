@@ -169,7 +169,7 @@ function CourseNodeComponent({ data }: NodeProps) {
           );
         })()}
       {course.isMissing && (
-        <div className="mt-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+        <div className="mt-1 text-[10px] font-medium italic text-slate-500 dark:text-slate-400">
           Not selected - double-click to add
         </div>
       )}
