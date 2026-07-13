@@ -9,6 +9,13 @@
   status = 200
   force = true
 
+# Redirect
+[[redirects]]
+  from = "https://uoftcoursemap.netlify.app/*"
+  to = "https://www.uoftcoursemap.ca/:splat"
+  status = 301
+  force = true
+
 [[headers]]
   for = "/*"
   [headers.values]

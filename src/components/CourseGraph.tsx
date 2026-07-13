@@ -6,6 +6,7 @@ import {
   type EdgeTypes,
   type Node,
   type NodeTypes,
+  type ReactFlowInstance,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -28,8 +29,8 @@ type CourseGraphProps = {
   settings: SettingsState;
   selectedNodeIds: string[];
   theme: "light" | "dark";
+  fitViewKey: string;
   onSelectNode: (id: string | null) => void;
-  onNodeDoubleClick?: (id: string) => void;
   onAddCourse?: (code: string) => void;
   onOpenCourseInfo?: (code: string) => void;
   onHideCourse?: (code: string) => void;
@@ -265,8 +266,8 @@ export function CourseGraph({
   settings,
   selectedNodeIds,
   theme,
+  fitViewKey,
   onSelectNode,
-  onNodeDoubleClick,
   onAddCourse,
   onOpenCourseInfo,
   onHideCourse,
@@ -457,6 +458,29 @@ export function CourseGraph({
     };
   }, [allNodes, boolNodes, edges, layoutSignature, nodeVisibility, viewportWidth, viewportHeight]);
 
+  const flowInstance = useRef<ReactFlowInstance | null>(null);
+  const lastFitKey = useRef(fitViewKey);
+  const fitPending = useRef(false);
+  const fitStaleSignature = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (lastFitKey.current === fitViewKey) return;
+    lastFitKey.current = fitViewKey;
+    fitPending.current = true;
+    fitStaleSignature.current = lastLayoutSignature.current;
+  }, [fitViewKey]);
+
+  useEffect(() => {
+    if (!fitPending.current || !laidOut) return;
+    if (lastLayoutSignature.current !== layoutSignature) return;
+    if (layoutSignature === fitStaleSignature.current) return;
+    fitPending.current = false;
+    const frame = requestAnimationFrame(() => {
+      void flowInstance.current?.fitView({ padding: 0.25, duration: 400 });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [laidOut, layoutSignature, fitViewKey]);
+
   useEffect(() => {
     if (layoutPending) {
       wasLayoutPending.current = true;
@@ -596,6 +620,7 @@ export function CourseGraph({
         dimmed,
         diff,
         settings.showNoPrerequisites,
+        onAddCourse,
         onOpenCourseInfo,
         onHideCourse,
       ];
@@ -618,6 +643,7 @@ export function CourseGraph({
           diff,
           showNoPrerequisites: settings.showNoPrerequisites,
           visible,
+          onAdd: onAddCourse,
           onOpenInfo: onOpenCourseInfo,
           onHide: onHideCourse,
         },
@@ -699,6 +725,7 @@ export function CourseGraph({
     hoverPathNodeId,
     missingNodeIds,
     nodeVisibility,
+    onAddCourse,
     onOpenCourseInfo,
     onHideCourse,
     selectedNodeIds,
@@ -716,24 +743,11 @@ export function CourseGraph({
     (_: React.MouseEvent, node: Node) => {
       const visible = (node.data as { visible?: boolean }).visible ?? true;
       if (!visible) return;
-      const course = (node.data as { course?: GraphNode }).course;
-      if (course?.isMissing) {
-        onAddCourse?.(course.code);
-        return;
-      }
       onSelectNode(node.id);
     },
-    [onAddCourse, onSelectNode],
+    [onSelectNode],
   );
 
-  const onNodeDoubleClickHandler = useCallback(
-    (_: React.MouseEvent, node: Node) => {
-      const visible = (node.data as { visible?: boolean }).visible ?? true;
-      if (!visible) return;
-      onNodeDoubleClick?.(node.id);
-    },
-    [onNodeDoubleClick],
-  );
 
   const setSpotlight = useCallback((id: string | null) => {
     spotlightIdRef.current = id;
@@ -822,12 +836,14 @@ export function CourseGraph({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodeClick={onNodeClick}
-        onNodeDoubleClick={onNodeDoubleClickHandler}
         onNodeMouseEnter={onNodeMouseEnter}
         onNodeMouseLeave={onNodeMouseLeave}
         onPaneClick={onPaneClick}
         onMoveStart={onMoveStart}
         onMoveEnd={onMoveEnd}
+        onInit={(instance) => {
+          flowInstance.current = instance;
+        }}
         fitView
         fitViewOptions={{ padding: 0.25 }}
         minZoom={0.2}

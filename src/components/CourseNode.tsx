@@ -1,5 +1,5 @@
-import { EyeOff, Info } from "lucide-react";
-import { memo } from "react";
+import { EyeOff, Info, Plus } from "lucide-react";
+import { memo, useEffect, useRef } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { DiffSide, GraphNode } from "../types/graph";
 
@@ -13,20 +13,40 @@ export type CourseNodeData = {
   visible?: boolean;
   onOpenInfo?: (code: string) => void;
   onHide?: (code: string) => void;
+  onAdd?: (code: string) => void;
 };
 
 function CourseNodeComponent({ data }: NodeProps) {
-  const { course, selected, highlighted, dimmed, diff, showNoPrerequisites, onOpenInfo, onHide } =
+  const { course, selected, highlighted, dimmed, diff, showNoPrerequisites, onOpenInfo, onHide, onAdd } =
     data as CourseNodeData;
+  const rootRef = useRef<HTMLDivElement>(null);
+  const addRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    addRef.current = onAdd ? () => onAdd(course.code) : null;
+  }, [onAdd, course.code]);
+
+  useEffect(() => {
+    const element = rootRef.current;
+    if (!element) return;
+    const handleDoubleClick = (event: MouseEvent) => {
+      event.stopPropagation();
+      addRef.current?.();
+    };
+    element.addEventListener("dblclick", handleDoubleClick);
+    return () => element.removeEventListener("dblclick", handleDoubleClick);
+  }, []);
+
   const diffBadges =
     diff === "a" ? ["A"] : diff === "b" ? ["B"] : diff === "both" ? ["A", "B"] : [];
 
   return (
     <div
+      ref={rootRef}
       className={[
         "group relative w-45 rounded-lg border px-3 py-2 text-left shadow-sm transition",
         course.isMissing
-          ? "border-dashed border-slate-300 bg-[#f2f3f3] hover:border-slate-400 dark:border-slate-600 dark:bg-[#21262d] dark:hover:border-slate-500"
+          ? "border-dashed border-blue-400/70 bg-surface hover:border-blue-500 dark:border-blue-400/50 dark:bg-[#252a33] dark:hover:border-blue-400"
           : course.isGhost
             ? diff === "a"
               ? "border-dashed border-orange-400/70 bg-[#f8f4ed] dark:border-orange-500/60 dark:bg-[#252122]"
@@ -35,7 +55,7 @@ function CourseNodeComponent({ data }: NodeProps) {
                 : "border-dashed border-violet-400/70 bg-[#f4f2f4] dark:border-violet-400/50 dark:bg-[#20202e]"
             : "bg-surface dark:bg-[#252a33]",
         !course.isMissing && !course.isGhost && course.isRoot
-          ? "border-blue-500 ring-2 ring-blue-400/40"
+          ? "border-yellow-400 ring-2 ring-yellow-300/60 dark:border-yellow-300 dark:ring-yellow-300/40"
           : !course.isMissing && !course.isGhost && selected
             ? "border-fuchsia-500 ring-2 ring-fuchsia-400/50"
             : !course.isMissing && !course.isGhost && highlighted
@@ -99,6 +119,24 @@ function CourseNodeComponent({ data }: NodeProps) {
         </button>
       )}
 
+      {onAdd && !course.isRoot && (
+        <button
+          type="button"
+          aria-label={`Add ${course.code} to your selected courses`}
+          title={`Add ${course.code} to your courses (or double-click)`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onAdd(course.code);
+          }}
+          className={[
+            "absolute -top-2 hidden h-6 w-6 shrink-0 place-items-center rounded-full border-slate-200 bg-surface p-0 text-slate-600 shadow-sm transition hover:border-emerald-400 hover:text-emerald-600 group-hover:grid pointer-coarse:grid dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-300 dark:hover:border-emerald-500 dark:hover:text-emerald-400",
+            course.isMissing ? "right-5" : "right-12",
+          ].join(" ")}
+        >
+          <Plus />
+        </button>
+      )}
+
       {onHide && !course.isMissing && (
         <button
           type="button"
@@ -114,24 +152,10 @@ function CourseNodeComponent({ data }: NodeProps) {
         </button>
       )}
 
-      <div
-        className={[
-          "text-sm font-semibold",
-          course.isMissing
-            ? "text-slate-500 dark:text-slate-400"
-            : "text-slate-900 dark:text-slate-100",
-        ].join(" ")}
-      >
+      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
         {course.code}
       </div>
-      <div
-        className={[
-          "mt-0.5 line-clamp-2 text-xs",
-          course.isMissing
-            ? "text-slate-400 dark:text-slate-500"
-            : "text-slate-500 dark:text-slate-400",
-        ].join(" ")}
-      >
+      <div className="mt-0.5 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">
         {course.name}
       </div>
       {course.isGhost &&
@@ -146,8 +170,8 @@ function CourseNodeComponent({ data }: NodeProps) {
           );
         })()}
       {course.isMissing && (
-        <div className="mt-1 text-[10px] italic text-slate-400 dark:text-slate-500">
-          Not selected — click to add
+        <div className="mt-1 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+          Not selected — double-click to add
         </div>
       )}
     </div>

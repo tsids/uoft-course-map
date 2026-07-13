@@ -119,7 +119,7 @@ export function GraphLegend({
           )}
 
           <LegendSwatch label="Selected course">
-            <div className="h-5 w-9 rounded border-2 border-blue-500 bg-surface ring-2 ring-blue-400/40 dark:bg-[#252a33]" />
+            <div className="h-5 w-9 rounded border-2 border-yellow-400 bg-surface ring-2 ring-yellow-300/60 dark:border-yellow-300 dark:bg-[#252a33] dark:ring-yellow-300/40" />
           </LegendSwatch>
 
           <LegendSwatch label="Clicked course (path highlighted)">
@@ -131,7 +131,7 @@ export function GraphLegend({
           </LegendSwatch>
 
           <LegendSwatch label="Needed course (not selected)">
-            <div className="h-5 w-9 rounded border border-dashed border-slate-300 bg-slate-100/50 opacity-55 dark:border-slate-600 dark:bg-slate-500/10" />
+            <div className="h-5 w-9 rounded border border-dashed border-blue-400/70 bg-surface dark:border-blue-400/50 dark:bg-[#252a33]" />
           </LegendSwatch>
 
           <LegendLine
@@ -151,6 +151,18 @@ export function GraphLegend({
             dashed
             arrow
           />
+
+          <div className="mt-1 flex flex-col gap-1 border-t border-slate-200/70 pt-2 text-xs text-slate-600 dark:border-slate-700/70 dark:text-slate-300">
+            <span>
+              <span className="font-medium">Click</span> — highlight path
+            </span>
+            <span>
+              <span className="font-medium">Double-click</span> — add course
+            </span>
+            <span>
+              <span className="font-medium">Hover</span> — preview connections
+            </span>
+          </div>
         </div>
       )}
     </div>

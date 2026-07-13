@@ -225,7 +225,7 @@ function ExcludeSubjectAreaField({
     inputRef.current?.focus();
   };
 
-  const showSuggestions = open && query.trim().length >= 1 && suggestions.length > 0;
+  const showSuggestions = open && query.trim().length >= 1;
 
   return (
     <div
@@ -300,6 +300,11 @@ function ExcludeSubjectAreaField({
             role="listbox"
             className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-surface py-1 shadow-lg dark:border-slate-600 dark:bg-[#1f242d]"
           >
+            {suggestions.length === 0 && (
+              <li className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
+                No subject areas found
+              </li>
+            )}
             {suggestions.map((subjectArea, index) => (
               <li key={subjectArea} role="option" aria-selected={index === activeIndex}>
                 <button
@@ -410,9 +415,9 @@ export function SearchPanel({
     }
 
     const controller = new AbortController();
+    const showLoading = window.setTimeout(() => setSuggestionsLoading(true), 0);
 
     const timer = window.setTimeout(() => {
-      setSuggestionsLoading(true);
       resolveCourses(query, controller.signal)
         .then(({ matches }) => {
           setSuggestions(matches);
@@ -434,6 +439,7 @@ export function SearchPanel({
 
     return () => {
       controller.abort();
+      window.clearTimeout(showLoading);
       window.clearTimeout(timer);
     };
   }, [filters.search, onResolveError]);
@@ -630,15 +636,10 @@ export function SearchPanel({
     onResolveError(`No courses found for "${query}"`);
   };
 
-  const showSuggestions =
-    suggestionsOpen &&
-    filters.search.trim().length >= 2 &&
-    (suggestionsLoading || suggestions.length > 0);
+  const showSuggestions = suggestionsOpen && filters.search.trim().length >= 2;
 
   const showSubjectAreaSuggestions =
-    subjectAreaSuggestionsOpen &&
-    subjectAreaQuery.trim().length >= 1 &&
-    subjectAreaSuggestions.length > 0;
+    subjectAreaSuggestionsOpen && subjectAreaQuery.trim().length >= 1;
 
   return (
     <div
@@ -657,7 +658,7 @@ export function SearchPanel({
         "pointer-events-auto z-20 rounded-xl border backdrop-blur-sm",
         "transition-[width,background-color,border-color,box-shadow,padding] duration-200 ease-out",
         open
-          ? "w-[min(13rem,calc(100vw-2rem))] md:w-[min(17rem,calc(100vw-2rem))] lg:w-[min(42rem,calc(100vw-2rem))] border-slate-200/80 bg-surface/95 p-3 shadow-lg dark:border-slate-700/80 dark:bg-[#252a33]/95"
+          ? "w-[min(13rem,calc(100vw-2rem))] md:w-[min(17rem,calc(100vw-2rem))] lg:w-[min(34rem,calc(100vw-2rem))] border-slate-200/80 bg-surface/95 p-3 shadow-lg dark:border-slate-700/80 dark:bg-[#252a33]/95"
           : "w-44 sm:w-56 border-slate-200/20 bg-surface/15 p-1.5 shadow-none dark:border-slate-700/20 dark:bg-[#252a33]/15",
       ].join(" ")}
     >
@@ -789,26 +790,6 @@ export function SearchPanel({
             )}
           </div>
 
-          {open && (
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(true);
-                onToggleFilters();
-              }}
-              aria-label={filtersExpanded ? "Hide filters" : "Show filters"}
-              aria-expanded={filtersExpanded}
-              title={filtersExpanded ? "Hide filters" : "Show filters"}
-              className={[
-                "grid aspect-square shrink-0 place-items-center self-stretch rounded-md border transition duration-200",
-                filtersExpanded
-                  ? "border-blue-400 bg-blue-50 text-blue-600 dark:border-blue-500 dark:bg-blue-500/15 dark:text-blue-400"
-                  : "border-slate-200 bg-surface/80 text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-400 dark:hover:border-slate-500 dark:hover:text-slate-200",
-              ].join(" ")}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-            </button>
-          )}
         </div>
       </label>
 
@@ -943,6 +924,11 @@ export function SearchPanel({
               role="listbox"
               className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-surface py-1 shadow-lg dark:border-slate-600 dark:bg-[#1f242d]"
             >
+              {subjectAreaSuggestions.length === 0 && (
+                <li className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
+                  No subject areas found
+                </li>
+              )}
               {subjectAreaSuggestions.map((subjectArea, index) => (
                 <li key={subjectArea} role="option" aria-selected={index === subjectAreaActiveIndex}>
                   <button
@@ -1009,7 +995,7 @@ export function SearchPanel({
               key={code}
               type="button"
               onClick={() => onRemoveRoot(code)}
-              className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 transition hover:border-blue-300 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300"
+              className="inline-flex items-center gap-1 rounded-full border border-yellow-300 bg-yellow-50 px-2 py-0.5 text-xs font-medium text-yellow-800 transition hover:border-yellow-400 dark:border-yellow-500/40 dark:bg-yellow-500/10 dark:text-yellow-300"
             >
               {code}
               <X className="h-3 w-3" />
@@ -1044,6 +1030,27 @@ export function SearchPanel({
           ))}
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={onToggleFilters}
+        aria-expanded={filtersExpanded}
+        className={[
+          "inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-all duration-200 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
+          open
+            ? "mt-2.5 max-h-8 opacity-100"
+            : "pointer-events-none mt-0 max-h-0 overflow-hidden opacity-0",
+        ].join(" ")}
+      >
+        <SlidersHorizontal className="h-4 w-4" />
+        {filtersExpanded ? "Fewer filters" : "More filters"}
+        <ChevronDown
+          className={[
+            "h-4 w-4 transition-transform duration-200",
+            filtersExpanded ? "rotate-180" : "",
+          ].join(" ")}
+        />
+      </button>
 
       <div
         className={[

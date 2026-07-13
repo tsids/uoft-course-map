@@ -52,12 +52,7 @@ export default function App() {
     defaultAcademic,
     parseAcademicState,
   );
-  const [filtersExpanded, setFiltersExpanded] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      "matchMedia" in window &&
-      window.matchMedia("(min-width: 1024px)").matches,
-  );
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [settingsOpen, setSettingsOpen] = useLocalStorageState(
     STORAGE_KEYS.settingsOpen,
     false,
@@ -220,14 +215,6 @@ export default function App() {
     setSelectedNodeIds([]);
   }, [compareRoots, roots, setCompareRoots, setRoots]);
 
-  const handleNodeDoubleClick = useCallback(
-    (nodeId: string) => {
-      const node = nodes.find((item) => item.id === nodeId);
-      if (node) addRoot(node.code);
-    },
-    [addRoot, nodes],
-  );
-
   const handleHideCourse = useCallback((code: string) => {
     if (!filters.excludeCourses.includes(code)) {
       track("exclude", { type: "course", value: code });
@@ -302,8 +289,8 @@ export default function App() {
             settings={settings}
             selectedNodeIds={selectedNodeIds}
             theme={theme}
+            fitViewKey={`${roots.join(",")}::${activeCompareRoots.join(",")}::${filters.subjectAreas.join(",")}::${filters.showAllNoPrereqCourses}`}
             onSelectNode={handleSelectNode}
-            onNodeDoubleClick={handleNodeDoubleClick}
             onAddCourse={addRoot}
             onOpenCourseInfo={handleOpenCourseInfo}
             onHideCourse={handleHideCourse}

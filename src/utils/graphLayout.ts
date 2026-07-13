@@ -85,48 +85,6 @@ function isLayoutEdge(edge: GraphEdge): boolean {
   }
 }
 
-function compressPassthroughToBool(
-  edges: GraphEdge[],
-  boolNodeIds: Set<string>,
-): { syntheticEdges: GraphEdge[]; hiddenEdgeKeys: Set<string> } {
-  const hiddenEdgeKeys = new Set<string>();
-  const syntheticEdges: GraphEdge[] = [];
-  const postEdges = edges.filter((edge) => edge.kind === "postrequisite");
-
-  const outgoing = new Map<string, GraphEdge[]>();
-  const incoming = new Map<string, GraphEdge[]>();
-  for (const edge of postEdges) {
-    outgoing.set(edge.from, [...(outgoing.get(edge.from) ?? []), edge]);
-    incoming.set(edge.to, [...(incoming.get(edge.to) ?? []), edge]);
-  }
-
-  for (const orId of boolNodeIds) {
-    const inputsToOr = (incoming.get(orId) ?? []).filter((edge) => !boolNodeIds.has(edge.from));
-
-    for (const inputEdge of inputsToOr) {
-      const passthroughId = inputEdge.from;
-      const intoPassthrough = (incoming.get(passthroughId) ?? []).filter(
-        (edge) => edge.kind === "postrequisite" && !boolNodeIds.has(edge.from),
-      );
-      const outOfPassthrough = (outgoing.get(passthroughId) ?? []).filter(
-        (edge) => edge.kind === "postrequisite",
-      );
-
-      if (intoPassthrough.length !== 1 || outOfPassthrough.length !== 1) continue;
-      if (outOfPassthrough[0]?.to !== orId) continue;
-
-      const ancestorId = intoPassthrough[0]!.from;
-      hiddenEdgeKeys.add(edgeKey({ from: ancestorId, to: passthroughId, kind: "postrequisite" }));
-
-      if (!syntheticEdges.some((edge) => edge.from === ancestorId && edge.to === orId)) {
-        syntheticEdges.push({ from: ancestorId, to: orId, kind: "postrequisite" });
-      }
-    }
-  }
-
-  return { syntheticEdges, hiddenEdgeKeys };
-}
-
 function hideRedundantFanoutEdgesViaBoolNodes(
   visibleEdges: GraphEdge[],
   boolNodes: BoolGraphNode[],
@@ -226,16 +184,11 @@ export async function layoutGraph(
       layoutNodeIds.has(edge.to),
   );
 
-  const { syntheticEdges, hiddenEdgeKeys: compressedHidden } = compressPassthroughToBool(
-    visibleEdges,
-    boolNodeIds,
-  );
-  const redundantHidden = hideRedundantFanoutEdgesViaBoolNodes(
+  const hiddenEdgeKeys = hideRedundantFanoutEdgesViaBoolNodes(
     visibleEdges,
     layoutBoolNodes,
     boolNodeIds,
   );
-  const hiddenEdgeKeys = new Set<string>([...compressedHidden, ...redundantHidden]);
 
   const renderEdges = visibleEdges.filter((edge) => !hiddenEdgeKeys.has(edgeKey(edge)));
 
@@ -286,24 +239,14 @@ export async function layoutGraph(
       }),
     ];
 
-    const elkEdges: ElkExtendedEdge[] = [
-      ...renderEdges.map((edge) => {
-        const { source, target } = edgePorts(edge.kind);
-        return {
-          id: edgeKey(edge),
-          sources: [portId(edge.from, source)],
-          targets: [portId(edge.to, target)],
-        };
-      }),
-      ...syntheticEdges.map((edge, index) => {
-        const { source, target } = edgePorts(edge.kind);
-        return {
-          id: `syn::${index}::${edge.from}|${edge.to}`,
-          sources: [portId(edge.from, source)],
-          targets: [portId(edge.to, target)],
-        };
-      }),
-    ];
+    const elkEdges: ElkExtendedEdge[] = renderEdges.map((edge) => {
+      const { source, target } = edgePorts(edge.kind);
+      return {
+        id: edgeKey(edge),
+        sources: [portId(edge.from, source)],
+        targets: [portId(edge.to, target)],
+      };
+    });
 
     const elkGraph: ElkNode = {
       id: "root",
@@ -336,7 +279,6 @@ export async function layoutGraph(
     }
 
     for (const edge of result.edges ?? []) {
-      if (edge.id.startsWith("syn::")) continue;
       const points = elkEdgePoints(edge);
       if (points) {
         pathById.set(edge.id, roundedPath(points));
