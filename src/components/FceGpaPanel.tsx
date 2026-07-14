@@ -104,8 +104,8 @@ export function FceGpaPanel({
         <span className="ml-auto flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
           {!open && (
             <span>
-              FCE {fce}
-              {gpa !== null && ` · GPA ${gpa}`}
+              {fce} Credits
+              {gpa !== null && ` · ${gpa} GPA`}
             </span>
           )}
           <ChevronDown
@@ -120,10 +120,10 @@ export function FceGpaPanel({
       {open && (
         <div className="flex flex-col gap-0.5 px-2 pb-2.5">
           <NumberField
-            label="FCE count"
+            label="Credit count"
             hint={
               fceOverridden
-                ? "Manually set; used for FCE requirements."
+                ? "Manually set; used for credit requirements."
                 : "Auto-counted from selected courses; edit to override."
             }
             value={String(fce)}
@@ -140,7 +140,7 @@ export function FceGpaPanel({
                     onFceChange(null);
                   }}
                   title="Reset to auto count"
-                  aria-label="Reset FCE count to auto"
+                  aria-label="Reset credit count to auto"
                   className="text-slate-400 transition hover:text-blue-600 dark:hover:text-blue-400"
                 >
                   <RotateCcw className="h-3 w-3" />
@@ -160,8 +160,8 @@ export function FceGpaPanel({
           />
           <p className="px-1 pt-1 text-xs leading-snug text-slate-500 dark:text-slate-400">
             {fceOverridden
-              ? "FCE set manually."
-              : "FCE auto-counts selected courses."}{" "}
+              ? "Credits set manually."
+              : "Credits auto-counts selected courses."}{" "}
             Blank GPA is ignored.
           </p>
         </div>
