@@ -16,6 +16,7 @@ type SearchPanelProps = {
   filterOptions: FilterOptions;
   roots: string[];
   filtersExpanded: boolean;
+  highlight?: boolean;
   onChange: (patch: Partial<FilterState>) => void;
   onToggleFilters: () => void;
   onAddCourse: (code: string) => void;
@@ -363,6 +364,7 @@ export function SearchPanel({
   filterOptions,
   roots,
   filtersExpanded,
+  highlight = false,
   onChange,
   onToggleFilters,
   onAddCourse,
@@ -658,7 +660,8 @@ export function SearchPanel({
         "transition-[width,background-color,border-color,box-shadow,padding] duration-200 ease-out",
         open
           ? "w-[min(13rem,calc(100vw-2rem))] md:w-[min(17rem,calc(100vw-2rem))] lg:w-[min(34rem,calc(100vw-2rem))] border-slate-200/80 bg-surface/95 p-3 shadow-lg dark:border-slate-700/80 dark:bg-panel/95"
-          : "w-44 sm:w-56 border-slate-200/20 bg-surface/15 p-1.5 shadow-none dark:border-slate-700/20 dark:bg-panel/15",
+          : "w-44 sm:w-56 border-slate-200/80 bg-surface/95 p-1.5 shadow-lg dark:border-slate-700/80 dark:bg-panel/95",
+        highlight && !open ? "animate-[search-pulse_1.8s_ease-out_infinite]" : "",
       ].join(" ")}
     >
       <label onMouseEnter={() => setOpen(true)} className="flex flex-col gap-1">
@@ -674,8 +677,7 @@ export function SearchPanel({
           <div className="relative min-w-0 flex-1">
             <Search
               className={[
-                "pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 transition-colors",
-                open ? "text-slate-400" : "text-slate-400/70",
+                "pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors",
               ].join(" ")}
             />
             <input
@@ -741,7 +743,7 @@ export function SearchPanel({
                 "w-full rounded-md border py-2 pl-8 pr-2 text-sm outline-none transition-colors duration-200",
                 open
                   ? "border-slate-200 bg-surface text-black placeholder:text-slate-500 focus:border-blue-400 dark:border-slate-600 dark:bg-input dark:text-slate-100 dark:placeholder:text-slate-400"
-                  : "border-transparent bg-transparent text-black placeholder:text-slate-500/80 focus:border-slate-200/40 dark:text-slate-400 dark:placeholder:text-slate-500/80 dark:focus:border-slate-600/40",
+                  : "border-transparent bg-transparent text-black placeholder:text-slate-500 focus:border-slate-200/40 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-slate-600/40",
               ].join(" ")}
             />
 
@@ -829,8 +831,7 @@ export function SearchPanel({
         <div className="relative min-w-0">
           <Building2
             className={[
-              "pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 transition-colors",
-              open ? "text-slate-400" : "text-slate-400/70",
+              "pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors",
             ].join(" ")}
           />
           <input
@@ -914,7 +915,7 @@ export function SearchPanel({
               "w-full rounded-md border py-2 pl-8 pr-2 text-sm outline-none transition-colors duration-200",
               open
                 ? "border-slate-200 bg-surface text-black placeholder:text-slate-500 focus:border-blue-400 dark:border-slate-600 dark:bg-input dark:text-slate-100 dark:placeholder:text-slate-400"
-                : "border-transparent bg-transparent text-black placeholder:text-slate-500/80 focus:border-slate-200/40 dark:text-slate-400 dark:placeholder:text-slate-500/80 dark:focus:border-slate-600/40",
+                : "border-transparent bg-transparent text-black placeholder:text-slate-500 focus:border-slate-200/40 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-slate-600/40",
             ].join(" ")}
           />
 

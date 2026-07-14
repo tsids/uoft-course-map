@@ -82,6 +82,18 @@ body {
   }
 }
 
+@keyframes search-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.85), 0 0 14px 0 rgba(96, 165, 250, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 16px rgba(96, 165, 250, 0), 0 0 22px 8px rgba(96, 165, 250, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(96, 165, 250, 0), 0 0 0 0 rgba(96, 165, 250, 0);
+  }
+}
+
 .react-flow .react-flow__node,
 .react-flow .react-flow__node.selectable,
 .react-flow .react-flow__node.draggable,

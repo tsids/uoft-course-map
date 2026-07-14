@@ -428,7 +428,11 @@ export function CourseGraph({
 
   const campusFilterSet = useMemo(() => new Set(campusFilter), [campusFilter]);
 
-  const hidePrerequisites = hiddenEdgeKindSet.has("prerequisite");
+  const hasSelectedCourse = useMemo(
+    () => allNodes.some((node) => node.isRoot),
+    [allNodes],
+  );
+  const hidePrerequisites = hiddenEdgeKindSet.has("prerequisite") && hasSelectedCourse;
 
   const prereqCollapseKeepSet = useMemo(
     () =>

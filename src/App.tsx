@@ -91,9 +91,7 @@ export default function App() {
   );
   const [legendOpen, setLegendOpen] = useLocalStorageState(
     STORAGE_KEYS.legendOpen,
-    typeof window !== "undefined" &&
-      "matchMedia" in window &&
-      window.matchMedia("(min-width: 1024px)").matches,
+    false,
     parseBooleanFlag,
   );
   const [hiddenEdgeKinds, setHiddenEdgeKinds] = useLocalStorageState<GraphEdge["kind"][]>(
@@ -165,18 +163,36 @@ export default function App() {
   const statusVisible = Boolean(loading || error || resolveError || truncated);
 
   const graphReady = !loading && !error;
-  const searchDone = hintsDismissed.includes("search") || roots.length > 0;
   const showSearchHint =
     graphReady && !hintsDismissed.includes("search") && roots.length === 0;
   const showLegendHint =
-    graphReady && searchDone && !hintsDismissed.includes("legend");
+    graphReady && !hintsDismissed.includes("legend") && roots.length > 0;
   const showCompareHint =
     graphReady &&
     hintsDismissed.includes("legend") &&
     !hintsDismissed.includes("compare") &&
-    roots.length > 0 &&
-    !compareMode;
-  const spotlightActive = showSearchHint || showLegendHint;
+    roots.length > 0;
+  const spotlightActive = showSearchHint;
+
+  useEffect(() => {
+    if (showLegendHint) setLegendOpen(true);
+  }, [showLegendHint, setLegendOpen]);
+
+  const emptyCanvas =
+    graphReady &&
+    nodes.length === 0 &&
+    ghostNodes.length === 0 &&
+    missingNodes.length === 0 &&
+    roots.length === 0 &&
+    !filters.showAllNoPrereqCourses &&
+    filters.subjectAreas.length === 0;
+
+  const [everUsedApp, setEverUsedApp] = useState(false);
+  useEffect(() => {
+    if (roots.length > 0 || filters.subjectAreas.length > 0 || filters.showAllNoPrereqCourses) {
+      setEverUsedApp(true);
+    }
+  }, [roots.length, filters.subjectAreas.length, filters.showAllNoPrereqCourses]);
 
   const addRoots = useCallback((codes: string[]) => {
     if (codes.length === 0) return;
@@ -393,21 +409,10 @@ export default function App() {
           </div>
         )}
 
-        {spotlightActive && (
-          <div className="absolute inset-0 z-20 bg-canvas/85 backdrop-blur-sm dark:bg-base/85" aria-hidden="true" />
-        )}
-
         <div className="pointer-events-none absolute left-4 top-4 flex flex-col items-start gap-2">
-          <div
-            className={[
-              "relative",
-              showSearchHint ? "z-30" : "z-10",
-              showSearchHint ? HINT_GLOW : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-          >
+          <div className="relative z-20">
             <SearchPanel
+              highlight={emptyCanvas && !everUsedApp}
               filters={filters}
               filterOptions={filterOptions}
               roots={roots}
@@ -509,7 +514,7 @@ export default function App() {
           />
         </div>
 
-        {showSearchHint && (
+        {spotlightActive && (
           <Hint
             text="Search a course or subject area to build your map."
             arrow="top"
