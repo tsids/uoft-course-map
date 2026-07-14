@@ -67,7 +67,7 @@ function BoolNodeComponent({ data }: NodeProps) {
       />
 
       {(inputs.length > 0 || unlocks.length > 0) && (
-        <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden w-max max-w-64 -translate-x-1/2 rounded-lg border border-slate-200 bg-surface px-3 py-2 text-left font-normal normal-case shadow-lg group-hover:block dark:border-slate-600 dark:bg-[#1f242d]">
+        <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden w-max max-w-64 -translate-x-1/2 rounded-lg border border-slate-200 bg-surface px-3 py-2 text-left font-normal normal-case shadow-lg group-hover:block dark:border-slate-600 dark:bg-input">
           {inputs.length > 0 && (
             <>
               <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">

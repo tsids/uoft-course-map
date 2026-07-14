@@ -89,7 +89,7 @@ export function GraphLegend({
   return (
     <div
       className={[
-        "pointer-events-auto rounded-xl border border-slate-200/80 bg-surface/95 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-[#252a33]/95",
+        "pointer-events-auto rounded-xl border border-slate-200/80 bg-surface/95 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-panel/95",
         open ? "w-[min(14rem,calc(100vw-2rem))]" : "w-auto",
       ].join(" ")}
     >
@@ -115,7 +115,7 @@ export function GraphLegend({
           {compareActive && (
             <>
               <LegendSwatch label="Unlocked by group A only">
-                <div className="relative h-5 w-9 rounded border border-orange-400 bg-surface dark:border-orange-500/70 dark:bg-[#252a33]">
+                <div className="relative h-5 w-9 rounded border border-orange-400 bg-surface dark:border-orange-500/70 dark:bg-panel">
                   <span className="absolute -left-1.5 -top-1.5 grid h-3.5 w-3.5 place-items-center rounded-full bg-orange-500 text-[8px] font-bold text-white">
                     A
                   </span>
@@ -123,7 +123,7 @@ export function GraphLegend({
               </LegendSwatch>
 
               <LegendSwatch label="Unlocked by group B only">
-                <div className="relative h-5 w-9 rounded border border-rose-400 bg-surface dark:border-rose-500/70 dark:bg-[#252a33]">
+                <div className="relative h-5 w-9 rounded border border-rose-400 bg-surface dark:border-rose-500/70 dark:bg-panel">
                   <span className="absolute -left-1.5 -top-1.5 grid h-3.5 w-3.5 place-items-center rounded-full bg-rose-500 text-[8px] font-bold text-white">
                     B
                   </span>
@@ -131,7 +131,7 @@ export function GraphLegend({
               </LegendSwatch>
 
               <LegendSwatch label="Unlocked by both groups">
-                <div className="relative h-5 w-9 rounded border border-slate-200 bg-surface dark:border-slate-700 dark:bg-[#252a33]">
+                <div className="relative h-5 w-9 rounded border border-slate-200 bg-surface dark:border-slate-700 dark:bg-panel">
                   <span className="absolute -left-1.5 -top-1.5 flex gap-px">
                     <span className="grid h-3.5 w-3.5 place-items-center rounded-full bg-orange-500 text-[8px] font-bold text-white">
                       A
@@ -146,37 +146,37 @@ export function GraphLegend({
           )}
 
           <LegendSwatch label="Selected course">
-            <div className="h-5 w-9 rounded border-2 border-blue-500 bg-surface ring-2 ring-blue-400/40 dark:bg-[#252a33]" />
+            <div className="h-5 w-9 rounded border-2 border-blue-500 bg-surface ring-2 ring-blue-400/40 dark:bg-panel" />
           </LegendSwatch>
 
           <LegendSwatch label="Clicked course (path highlighted)">
-            <div className="h-5 w-9 rounded border-2 border-yellow-400 bg-surface ring-2 ring-yellow-300/50 dark:border-yellow-300 dark:bg-[#252a33]" />
+            <div className="h-5 w-9 rounded border-2 border-yellow-500 bg-surface ring-2 ring-yellow-400/60 dark:border-yellow-300 dark:ring-yellow-300/50 dark:bg-panel" />
           </LegendSwatch>
 
           <LegendSwatch label="Postrequisites">
-            <div className="h-5 w-9 rounded border border-purple-300 bg-surface dark:border-purple-400/70 dark:bg-[#252a33]" />
+            <div className="h-5 w-9 rounded border border-purple-300 bg-postreq dark:border-purple-400/45 dark:bg-postreq-dark" />
           </LegendSwatch>
 
           <div className="mt-1 flex flex-col gap-1 border-t border-slate-200/70 pt-2 dark:border-slate-700/70">
             <span className="text-[11px] text-slate-400 dark:text-slate-500">
-              Relationships — tap to show/hide
+              Relationships - tap to show/hide
             </span>
             <EdgeToggle
               label="Prerequisites"
-              color={dark ? "#94a3b8" : "#64748b"}
+              color={dark ? "var(--color-edge-prereq-dark)" : "var(--color-edge-prereq)"}
               hidden={isHidden("prerequisite")}
               onToggle={() => onToggleEdgeKind("prerequisite")}
             />
             <EdgeToggle
               label="Corequisites"
-              color={dark ? "#7dd3fc" : "#38bdf8"}
+              color={dark ? "var(--color-edge-coreq-dark)" : "var(--color-edge-coreq)"}
               dashed
               hidden={isHidden("corequisite")}
               onToggle={() => onToggleEdgeKind("corequisite")}
             />
             <EdgeToggle
               label="Exclusions"
-              color={dark ? "#fb923c" : "#ea580c"}
+              color={dark ? "var(--color-edge-exclusion-dark)" : "var(--color-edge-exclusion)"}
               dashed
               hidden={isHidden("exclusion")}
               onToggle={() => onToggleEdgeKind("exclusion")}

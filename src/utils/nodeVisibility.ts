@@ -120,13 +120,5 @@ export function buildPrereqCollapseKeepSet(
     }
   }
 
-  const anchored = new Set(keep);
-  for (const edge of edges) {
-    if (edge.kind === "corequisite" || edge.kind === "exclusion") {
-      if (anchored.has(edge.from)) keep.add(edge.to);
-      if (anchored.has(edge.to)) keep.add(edge.from);
-    }
-  }
-
   return keep;
 }

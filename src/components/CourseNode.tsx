@@ -23,13 +23,11 @@ function CourseNodeComponent({ data }: NodeProps) {
 
   const kind: "prerequisite" | "postrequisite" | null = course.isGhost
     ? "postrequisite"
-    : course.isMissing
-      ? "prerequisite"
-      : roleTint ?? null;
+    : roleTint ?? null;
 
   const roleBorder =
     kind === "postrequisite"
-      ? "border-purple-300 dark:border-purple-400/70"
+      ? "border-purple-300 dark:border-purple-400/45"
       : "border-slate-200 dark:border-slate-700";
   const rootRef = useRef<HTMLDivElement>(null);
   const addRef = useRef<(() => void) | null>(null);
@@ -58,10 +56,10 @@ function CourseNodeComponent({ data }: NodeProps) {
       className={[
         "group relative w-45 rounded-lg border px-3 py-2 text-left shadow-sm transition",
         kind === "postrequisite"
-          ? "bg-[#f4f2f4] dark:bg-[#20202e]"
-          : "bg-surface dark:bg-[#252a33]",
+          ? "bg-postreq dark:bg-postreq-dark"
+          : "bg-surface dark:bg-panel",
         selected
-          ? "border-yellow-400 ring-2 ring-yellow-300/50 dark:border-yellow-300"
+          ? "border-yellow-600 ring-2 ring-yellow-400/60 dark:border-yellow-300 dark:ring-yellow-300/50"
           : course.isRoot
             ? "border-blue-500 ring-2 ring-blue-400/40"
             : highlighted
@@ -72,7 +70,7 @@ function CourseNodeComponent({ data }: NodeProps) {
                   ? "border-rose-400 dark:border-rose-500/70"
                   : roleBorder,
         !course.hasPrerequisites && showNoPrerequisites
-          ? "outline-2 outline-fuchsia-500/70"
+          ? "outline-2 outline-cyan-500/70"
           : "",
         dimmed ? "opacity-35" : "opacity-100",
       ].join(" ")}
@@ -112,7 +110,7 @@ function CourseNodeComponent({ data }: NodeProps) {
             event.stopPropagation();
             onOpenInfo(course.code);
           }}
-          className="absolute -right-2 -top-2 hidden h-6 w-6 shrink-0 place-items-center rounded-full border-slate-200 bg-surface p-0 text-slate-600 shadow-sm transition hover:border-blue-400 hover:text-blue-600 group-hover:grid pointer-coarse:grid dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-300 dark:hover:border-blue-500 dark:hover:text-blue-400"
+          className="absolute -right-2 -top-2 hidden h-6 w-6 shrink-0 place-items-center rounded-full border-slate-200 bg-surface p-0 text-slate-600 shadow-sm transition hover:border-blue-400 hover:text-blue-600 group-hover:grid pointer-coarse:grid dark:border-slate-600 dark:bg-input dark:text-slate-300 dark:hover:border-blue-500 dark:hover:text-blue-400"
         >
           <Info />
         </button>
@@ -127,16 +125,13 @@ function CourseNodeComponent({ data }: NodeProps) {
             event.stopPropagation();
             onAdd(course.code);
           }}
-          className={[
-            "absolute -top-2 hidden h-6 w-6 shrink-0 place-items-center rounded-full border-slate-200 bg-surface p-0 text-slate-600 shadow-sm transition hover:border-emerald-400 hover:text-emerald-600 group-hover:grid pointer-coarse:grid dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-300 dark:hover:border-emerald-500 dark:hover:text-emerald-400",
-            course.isMissing ? "right-5" : "right-12",
-          ].join(" ")}
+          className="absolute -top-2 right-12 hidden h-6 w-6 shrink-0 place-items-center rounded-full border-slate-200 bg-surface p-0 text-slate-600 shadow-sm transition hover:border-emerald-400 hover:text-emerald-600 group-hover:grid pointer-coarse:grid dark:border-slate-600 dark:bg-input dark:text-slate-300 dark:hover:border-emerald-500 dark:hover:text-emerald-400"
         >
           <Plus />
         </button>
       )}
 
-      {onHide && !course.isMissing && (
+      {onHide && (
         <button
           type="button"
           aria-label={`Hide ${course.code} from the graph`}
@@ -145,7 +140,7 @@ function CourseNodeComponent({ data }: NodeProps) {
             event.stopPropagation();
             onHide(course.code);
           }}
-          className="absolute -top-2 right-5 hidden h-6 w-6 shrink-0 place-items-center rounded-full border-slate-200 bg-surface p-0 text-slate-600 shadow-sm transition hover:border-rose-400 hover:text-rose-600 group-hover:grid pointer-coarse:grid dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-300 dark:hover:border-rose-500 dark:hover:text-rose-400"
+          className="absolute -top-2 right-5 hidden h-6 w-6 shrink-0 place-items-center rounded-full border-slate-200 bg-surface p-0 text-slate-600 shadow-sm transition hover:border-rose-400 hover:text-rose-600 group-hover:grid pointer-coarse:grid dark:border-slate-600 dark:bg-input dark:text-slate-300 dark:hover:border-rose-500 dark:hover:text-rose-400"
         >
           <EyeOff />
         </button>
@@ -168,11 +163,6 @@ function CourseNodeComponent({ data }: NodeProps) {
             </div>
           );
         })()}
-      {course.isMissing && (
-        <div className="mt-1 text-[10px] font-medium italic text-slate-500 dark:text-slate-400">
-          Not selected
-        </div>
-      )}
     </div>
   );
 }

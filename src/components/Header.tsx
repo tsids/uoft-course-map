@@ -29,7 +29,7 @@ function SupportButton({
   const baseClasses =
     "inline-flex items-start justify-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium leading-none transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
   const toneClasses =
-    "border-slate-200 bg-surface text-slate-700 hover:border-slate-300 hover:bg-slate-50 focus-visible:ring-slate-400 dark:border-slate-700 dark:bg-[#1f242d] dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800";
+    "border-slate-200 bg-surface text-slate-700 hover:border-slate-300 hover:bg-slate-50 focus-visible:ring-slate-400 dark:border-slate-700 dark:bg-input dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800";
 
   return (
     <button type="button" onClick={onClick} className={`${baseClasses} ${toneClasses}`}>
@@ -119,7 +119,7 @@ export function Header({
 
   return (
     <>
-      <header className="w-full border-b border-slate-200/80 bg-surface/95 backdrop-blur dark:border-slate-700/80 dark:bg-[#1b2028]/95">
+      <header className="w-full border-b border-slate-200/80 bg-surface/95 backdrop-blur dark:border-slate-700/80 dark:bg-header/95">
         <div className="flex w-full items-center justify-between gap-3 px-4 py-2">
           <div className="flex min-w-0 items-center gap-2">
             <img
@@ -159,7 +159,7 @@ export function Header({
               target="_blank"
               rel="noreferrer"
               aria-label="GitHub repository"
-              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-surface p-1.5 text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-[#1f242d] dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-surface p-1.5 text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-input dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
             >
               <Github className="h-4 w-4" />
             </a>
@@ -169,7 +169,7 @@ export function Header({
 
       {activePanel && (
         <div className="fixed inset-0 z-30 flex items-end justify-center bg-slate-950/55 px-3 py-3 backdrop-blur-sm sm:items-center">
-          <div className="w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-surface shadow-2xl dark:border-slate-700 dark:bg-[#151a21]">
+          <div className="w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-surface shadow-2xl dark:border-slate-700 dark:bg-modal">
             <div className="p-5 sm:p-6">
                 <div className="mb-4 flex items-start justify-between gap-4">
                   <div>
@@ -197,7 +197,7 @@ export function Header({
                       <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                       <div className="grid gap-1 text-sm">
                         <p className="font-medium text-slate-900 dark:text-slate-50">
-                          Thanks — your feedback has been submitted.
+                          Thanks - your feedback has been submitted.
                         </p>
                         {sentIssueUrl && (
                           <a
@@ -242,7 +242,7 @@ export function Header({
                     <select
                       value={topic}
                       onChange={(event) => setTopic(event.target.value as "bug" | "suggestion")}
-                      className="rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 dark:border-slate-700 dark:bg-[#1f242d] dark:text-slate-50"
+                      className="rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 dark:border-slate-700 dark:bg-input dark:text-slate-50"
                     >
                       <option value="bug">Bug report</option>
                       <option value="suggestion">Suggestion</option>
@@ -255,7 +255,7 @@ export function Header({
                       value={summary}
                       onChange={(event) => setSummary(event.target.value)}
                       placeholder={topic === "bug" ? "What went wrong?" : "What should be improved?"}
-                      className="rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 dark:border-slate-700 dark:bg-[#1f242d] dark:text-slate-50"
+                      className="rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 dark:border-slate-700 dark:bg-input dark:text-slate-50"
                     />
                   </label>
 
@@ -266,7 +266,7 @@ export function Header({
                       onChange={(event) => setDetails(event.target.value)}
                       rows={6}
                       placeholder="Add steps to reproduce, expected behavior, course codes, or anything else that helps."
-                      className="rounded-2xl border border-slate-200 bg-surface px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 dark:border-slate-700 dark:bg-[#1f242d] dark:text-slate-50"
+                      className="rounded-2xl border border-slate-200 bg-surface px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 dark:border-slate-700 dark:bg-input dark:text-slate-50"
                     />
                   </label>
 
@@ -279,7 +279,7 @@ export function Header({
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
                       placeholder="Used to follow up"
-                      className="rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 dark:border-slate-700 dark:bg-[#1f242d] dark:text-slate-50"
+                      className="rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 dark:border-slate-700 dark:bg-input dark:text-slate-50"
                     />
                   </label>
 

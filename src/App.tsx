@@ -8,6 +8,7 @@ const CourseGraph = lazy(() =>
   import("./components/CourseGraph").then((module) => ({ default: module.CourseGraph })),
 );
 import { GraphLegend } from "./components/GraphLegend";
+import { Hint } from "./components/Hint";
 import { SearchPanel } from "./components/SearchPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { Header } from "./components/Header";
@@ -45,6 +46,17 @@ function parseHiddenEdgeKinds(stored: unknown): GraphEdge["kind"][] | null {
   return stored.filter((kind): kind is GraphEdge["kind"] =>
     TOGGLEABLE_EDGE_KINDS.includes(kind as GraphEdge["kind"]),
   );
+}
+
+type HintId = "search" | "legend" | "compare";
+
+const HINT_IDS: HintId[] = ["search", "legend", "compare"];
+
+const HINT_GLOW = "rounded-2xl shadow-[0_0_28px_8px_rgba(96,165,250,0.55)]";
+
+function parseHintsDismissed(stored: unknown): HintId[] | null {
+  if (!Array.isArray(stored)) return null;
+  return stored.filter((id): id is HintId => HINT_IDS.includes(id as HintId));
 }
 
 export default function App() {
@@ -88,6 +100,19 @@ export default function App() {
     STORAGE_KEYS.hiddenEdgeKinds,
     [],
     parseHiddenEdgeKinds,
+  );
+  const [hintsDismissed, setHintsDismissed] = useLocalStorageState<HintId[]>(
+    STORAGE_KEYS.hintsDismissed,
+    [],
+    parseHintsDismissed,
+  );
+  const dismissHint = useCallback(
+    (id: HintId) => {
+      setHintsDismissed((current) =>
+        current.includes(id) ? current : [...current, id],
+      );
+    },
+    [setHintsDismissed],
   );
   const handleToggleEdgeKind = useCallback(
     (kind: GraphEdge["kind"]) => {
@@ -138,6 +163,20 @@ export default function App() {
   );
 
   const statusVisible = Boolean(loading || error || resolveError || truncated);
+
+  const graphReady = !loading && !error;
+  const searchDone = hintsDismissed.includes("search") || roots.length > 0;
+  const showSearchHint =
+    graphReady && !hintsDismissed.includes("search") && roots.length === 0;
+  const showLegendHint =
+    graphReady && searchDone && !hintsDismissed.includes("legend");
+  const showCompareHint =
+    graphReady &&
+    hintsDismissed.includes("legend") &&
+    !hintsDismissed.includes("compare") &&
+    roots.length > 0 &&
+    !compareMode;
+  const spotlightActive = showSearchHint || showLegendHint;
 
   const addRoots = useCallback((codes: string[]) => {
     if (codes.length === 0) return;
@@ -335,7 +374,7 @@ export default function App() {
         />
 
         {statusVisible && (
-          <div className={`pointer-events-none absolute bottom-4 ${nodes.length + ghostNodes.length + missingNodes.length > 0 ? "left-14" : "left-4"} z-10 rounded-md border border-slate-200 bg-surface/90 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-[#252a33]/90 dark:text-slate-300`}>
+          <div className={`pointer-events-none absolute bottom-4 ${nodes.length + ghostNodes.length + missingNodes.length > 0 ? "left-14" : "left-4"} z-10 rounded-md border border-slate-200 bg-surface/90 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-panel/90 dark:text-slate-300`}>
             {loading && "Loading courses..."}
             {!loading && error && error}
             {!loading && !error && resolveError && resolveError}
@@ -346,7 +385,7 @@ export default function App() {
 
         {!loading && !error && nodes.length === 0 && ghostNodes.length === 0 && missingNodes.length === 0 && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <p className="pointer-events-auto select-text rounded-xl border border-slate-200 bg-surface/80 px-6 py-4 text-base text-slate-500 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-[#252a33]/80 dark:text-slate-400">
+            <p className="pointer-events-auto select-text rounded-xl border border-slate-200 bg-surface/80 px-6 py-4 text-base text-slate-500 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-panel/80 dark:text-slate-400">
               {roots.length === 0 && !filters.showAllNoPrereqCourses && filters.subjectAreas.length === 0
                 ? "Search a course or subject area to get started."
                 : "No courses match the current filters. Try removing or relaxing some filters."}
@@ -354,34 +393,74 @@ export default function App() {
           </div>
         )}
 
-        <div className="pointer-events-none absolute left-4 top-4 z-10 flex flex-col items-start gap-2">
-          <SearchPanel
-            filters={filters}
-            filterOptions={filterOptions}
-            roots={roots}
-            filtersExpanded={filtersExpanded}
-            onChange={handleFiltersChange}
-            onToggleFilters={() => setFiltersExpanded((expanded) => !expanded)}
-            onAddCourse={handleAddCourse}
-            onAddCourses={addRoots}
-            onRemoveRoot={removeRoot}
-            onClearRoots={clearRoots}
-            onResolveError={setResolveError}
-          />
-          <ComparePanel
-            active={compareMode}
-            onToggle={toggleCompareMode}
-            rootsA={roots}
-            onRemoveA={removeRoot}
-            rootsB={compareRoots}
-            onAddB={addCompareRoots}
-            onRemoveB={removeCompareRoot}
-            onClearB={clearCompareRoots}
-            onSwap={swapCompareGroups}
-            summary={diff?.summary ?? null}
-            onOpenCourseInfo={handleOpenCourseInfo}
-            onResolveError={setResolveError}
-          />
+        {spotlightActive && (
+          <div className="absolute inset-0 z-20 bg-canvas/85 backdrop-blur-sm dark:bg-base/85" aria-hidden="true" />
+        )}
+
+        <div className="pointer-events-none absolute left-4 top-4 flex flex-col items-start gap-2">
+          <div
+            className={[
+              "relative",
+              showSearchHint ? "z-30" : "z-10",
+              showSearchHint ? HINT_GLOW : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <SearchPanel
+              filters={filters}
+              filterOptions={filterOptions}
+              roots={roots}
+              filtersExpanded={filtersExpanded}
+              onChange={(patch) => {
+                dismissHint("search");
+                handleFiltersChange(patch);
+              }}
+              onToggleFilters={() => {
+                dismissHint("search");
+                setFiltersExpanded((expanded) => !expanded);
+              }}
+              onAddCourse={(code) => {
+                dismissHint("search");
+                handleAddCourse(code);
+              }}
+              onAddCourses={(codes) => {
+                dismissHint("search");
+                addRoots(codes);
+              }}
+              onRemoveRoot={removeRoot}
+              onClearRoots={clearRoots}
+              onResolveError={setResolveError}
+            />
+          </div>
+          <div className={["relative z-10", showCompareHint ? HINT_GLOW : ""].filter(Boolean).join(" ")}>
+            <ComparePanel
+              active={compareMode}
+              onToggle={() => {
+                dismissHint("compare");
+                toggleCompareMode();
+              }}
+              rootsA={roots}
+              onRemoveA={removeRoot}
+              rootsB={compareRoots}
+              onAddB={addCompareRoots}
+              onRemoveB={removeCompareRoot}
+              onClearB={clearCompareRoots}
+              onSwap={swapCompareGroups}
+              summary={diff?.summary ?? null}
+              onOpenCourseInfo={handleOpenCourseInfo}
+              onResolveError={setResolveError}
+            />
+            {showCompareHint && (
+              <Hint
+                text="Compare two sets of courses to see what each unlocks."
+                arrow="top"
+                className="left-0 top-[calc(100%+0.5rem)] w-60"
+                arrowClassName="-top-1.5 left-6"
+                onDismiss={() => dismissHint("compare")}
+              />
+            )}
+          </div>
         </div>
 
         <div className="pointer-events-none absolute right-4 top-4 z-10 flex flex-col items-end gap-2">
@@ -407,19 +486,48 @@ export default function App() {
 
         </div>
 
-        <div className="pointer-events-none absolute bottom-4 right-4 z-10">
+        <div
+          className={[
+            "pointer-events-none absolute bottom-4 right-4",
+            showLegendHint ? "z-30" : "z-10",
+            showLegendHint ? HINT_GLOW : "",
+          ].join(" ")}
+        >
           <GraphLegend
             open={legendOpen}
-            onToggle={() => setLegendOpen((open) => !open)}
+            onToggle={() => {
+              dismissHint("legend");
+              setLegendOpen((open) => !open);
+            }}
             theme={theme}
             compareActive={compareMode && diff !== null}
             hiddenEdgeKinds={hiddenEdgeKinds}
-            onToggleEdgeKind={handleToggleEdgeKind}
+            onToggleEdgeKind={(kind) => {
+              dismissHint("legend");
+              handleToggleEdgeKind(kind);
+            }}
           />
         </div>
+
+        {showSearchHint && (
+          <Hint
+            text="Search a course or subject area to build your map."
+            arrow="top"
+            className="left-4 top-[4.75rem]"
+            onDismiss={() => dismissHint("search")}
+          />
+        )}
+        {showLegendHint && (
+          <Hint
+            text="Interactive legend, toggle graph features."
+            arrow={legendOpen ? "right" : "bottom"}
+            className={legendOpen ? "bottom-6 right-[15.5rem]" : "bottom-[4.75rem] right-4"}
+            onDismiss={() => dismissHint("legend")}
+          />
+        )}
       </div>
 
-      <DisclaimerBanner />
+      {!spotlightActive && <DisclaimerBanner />}
     </div>
   );
 }

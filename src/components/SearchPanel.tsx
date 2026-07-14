@@ -158,7 +158,7 @@ function MultiSelectField({
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-1 rounded-md border border-slate-200 bg-surface px-2 py-1.5 text-left text-sm text-slate-800 outline-none focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100"
+        className="flex w-full items-center justify-between gap-1 rounded-md border border-slate-200 bg-surface px-2 py-1.5 text-left text-sm text-slate-800 outline-none focus:border-blue-400 dark:border-slate-600 dark:bg-input dark:text-slate-100"
       >
         <span className="truncate">{summary}</span>
         <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />
@@ -168,7 +168,7 @@ function MultiSelectField({
         <ul
           role="listbox"
           aria-multiselectable="true"
-          className="absolute left-0 top-[calc(100%+4px)] z-20 max-h-56 w-full min-w-[11rem] overflow-y-auto rounded-md border border-slate-200 bg-surface py-1 shadow-lg dark:border-slate-600 dark:bg-[#1f242d]"
+          className="absolute left-0 top-[calc(100%+4px)] z-20 max-h-56 w-full min-w-[11rem] overflow-y-auto rounded-md border border-slate-200 bg-surface py-1 shadow-lg dark:border-slate-600 dark:bg-input"
         >
           {options.map((option) => (
             <li key={option} role="option" aria-selected={values.includes(option)}>
@@ -291,14 +291,14 @@ function ExcludeSubjectAreaField({
               }
             }
           }}
-          className="w-full rounded-md border border-slate-200 bg-surface py-2 pl-8 pr-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-rose-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100"
+          className="w-full rounded-md border border-slate-200 bg-surface py-2 pl-8 pr-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-rose-400 dark:border-slate-600 dark:bg-input dark:text-slate-100"
         />
 
         {showSuggestions && (
           <ul
             id="exclude-subject-area-suggestions"
             role="listbox"
-            className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-surface py-1 shadow-lg dark:border-slate-600 dark:bg-[#1f242d]"
+            className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-surface py-1 shadow-lg dark:border-slate-600 dark:bg-input"
           >
             {suggestions.length === 0 && (
               <li className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
@@ -644,7 +644,6 @@ export function SearchPanel({
   return (
     <div
       ref={containerRef}
-      onMouseEnter={() => setOpen(true)}
       onMouseLeave={collapseUnlessFocused}
       onFocusCapture={() => setOpen(true)}
       onBlurCapture={(event) => {
@@ -658,11 +657,11 @@ export function SearchPanel({
         "pointer-events-auto z-20 rounded-xl border backdrop-blur-sm",
         "transition-[width,background-color,border-color,box-shadow,padding] duration-200 ease-out",
         open
-          ? "w-[min(13rem,calc(100vw-2rem))] md:w-[min(17rem,calc(100vw-2rem))] lg:w-[min(34rem,calc(100vw-2rem))] border-slate-200/80 bg-surface/95 p-3 shadow-lg dark:border-slate-700/80 dark:bg-[#252a33]/95"
-          : "w-44 sm:w-56 border-slate-200/20 bg-surface/15 p-1.5 shadow-none dark:border-slate-700/20 dark:bg-[#252a33]/15",
+          ? "w-[min(13rem,calc(100vw-2rem))] md:w-[min(17rem,calc(100vw-2rem))] lg:w-[min(34rem,calc(100vw-2rem))] border-slate-200/80 bg-surface/95 p-3 shadow-lg dark:border-slate-700/80 dark:bg-panel/95"
+          : "w-44 sm:w-56 border-slate-200/20 bg-surface/15 p-1.5 shadow-none dark:border-slate-700/20 dark:bg-panel/15",
       ].join(" ")}
     >
-      <label className="flex flex-col gap-1">
+      <label onMouseEnter={() => setOpen(true)} className="flex flex-col gap-1">
         <span
           className={[
             "text-xs font-medium text-slate-600 transition-opacity duration-200 dark:text-slate-300",
@@ -741,7 +740,7 @@ export function SearchPanel({
               className={[
                 "w-full rounded-md border py-2 pl-8 pr-2 text-sm outline-none transition-colors duration-200",
                 open
-                  ? "border-slate-200 bg-surface text-black placeholder:text-slate-500 focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100 dark:placeholder:text-slate-400"
+                  ? "border-slate-200 bg-surface text-black placeholder:text-slate-500 focus:border-blue-400 dark:border-slate-600 dark:bg-input dark:text-slate-100 dark:placeholder:text-slate-400"
                   : "border-transparent bg-transparent text-black placeholder:text-slate-500/80 focus:border-slate-200/40 dark:text-slate-400 dark:placeholder:text-slate-500/80 dark:focus:border-slate-600/40",
               ].join(" ")}
             />
@@ -750,7 +749,7 @@ export function SearchPanel({
               <ul
                 id="course-suggestions"
                 role="listbox"
-                className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-surface py-1 shadow-lg dark:border-slate-600 dark:bg-[#1f242d]"
+                className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-surface py-1 shadow-lg dark:border-slate-600 dark:bg-input"
               >
                 {suggestionsLoading && (
                   <li className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
@@ -813,6 +812,7 @@ export function SearchPanel({
       </label>
 
       <label
+        onMouseEnter={() => setOpen(true)}
         className={[
           "flex flex-col gap-1 transition-all duration-200",
           open ? "mt-2 opacity-100" : "mt-1 opacity-90",
@@ -913,7 +913,7 @@ export function SearchPanel({
             className={[
               "w-full rounded-md border py-2 pl-8 pr-2 text-sm outline-none transition-colors duration-200",
               open
-                ? "border-slate-200 bg-surface text-black placeholder:text-slate-500 focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100 dark:placeholder:text-slate-400"
+                ? "border-slate-200 bg-surface text-black placeholder:text-slate-500 focus:border-blue-400 dark:border-slate-600 dark:bg-input dark:text-slate-100 dark:placeholder:text-slate-400"
                 : "border-transparent bg-transparent text-black placeholder:text-slate-500/80 focus:border-slate-200/40 dark:text-slate-400 dark:placeholder:text-slate-500/80 dark:focus:border-slate-600/40",
             ].join(" ")}
           />
@@ -922,7 +922,7 @@ export function SearchPanel({
             <ul
               id="subject-area-suggestions"
               role="listbox"
-              className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-surface py-1 shadow-lg dark:border-slate-600 dark:bg-[#1f242d]"
+              className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-surface py-1 shadow-lg dark:border-slate-600 dark:bg-input"
             >
               {subjectAreaSuggestions.length === 0 && (
                 <li className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
@@ -1036,10 +1036,10 @@ export function SearchPanel({
         onClick={onToggleFilters}
         aria-expanded={filtersExpanded}
         className={[
-          "inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-all duration-200 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
+          "items-center gap-1.5 text-sm font-medium text-slate-500 transition-all duration-200 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
           open
-            ? "mt-2.5 max-h-8 opacity-100"
-            : "pointer-events-none mt-0 max-h-0 overflow-hidden opacity-0",
+            ? "inline-flex mt-2.5 max-h-8 opacity-100"
+            : "flex pointer-events-none mt-0 max-h-0 overflow-hidden opacity-0",
         ].join(" ")}
       >
         <SlidersHorizontal className="h-4 w-4" />

@@ -54,54 +54,82 @@ const edgeTypes: EdgeTypes = {
 };
 
 function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean, dimmed: boolean) {
-  const base = highlighted ? 3.5 : 1.5;
+  const base = highlighted ? 3.5 : 2;
   const opacity = dimmed ? 0.15 : highlighted ? 1 : DEFAULT_EDGE_OPACITY;
 
   if (kind === "corequisite") {
     return {
-      stroke: highlighted ? (dark ? "#bae6fd" : "#0ea5e9") : dark ? "#7dd3fc" : "#38bdf8",
-      strokeWidth: base,
+      stroke: highlighted
+        ? dark
+          ? "var(--color-edge-coreq-strong-dark)"
+          : "var(--color-edge-coreq-strong)"
+        : dark
+          ? "var(--color-edge-coreq-dark)"
+          : "var(--color-edge-coreq)",
+      strokeWidth: highlighted ? 3.5 : 2,
       strokeDasharray: "6 4",
-      opacity,
+      opacity: dimmed ? 0.15 : highlighted ? 1 : 0.9,
     };
   }
   if (kind === "exclusion") {
     return {
-      stroke: highlighted ? (dark ? "#fdba74" : "#c2410c") : dark ? "#fb923c" : "#ea580c",
-      strokeWidth: base,
+      stroke: highlighted
+        ? dark
+          ? "var(--color-edge-exclusion-strong-dark)"
+          : "var(--color-edge-exclusion-strong)"
+        : dark
+          ? "var(--color-edge-exclusion-dark)"
+          : "var(--color-edge-exclusion)",
+      strokeWidth: highlighted ? 3.5 : 2,
       strokeDasharray: "4 4",
-      opacity,
+      opacity: dimmed ? 0.15 : highlighted ? 1 : 0.9,
     };
   }
   if (highlighted) {
     return {
-      stroke: dark ? "#34d399" : "#059669",
+      stroke: dark ? "var(--color-edge-active-dark)" : "var(--color-edge-active)",
       strokeWidth: base,
       opacity,
     };
   }
   if (kind === "postrequisite") {
     return {
-      stroke: dark ? "#c084fc" : "#9333ea",
-      strokeWidth: base,
+      stroke: dark ? "var(--color-edge-postreq-dark)" : "var(--color-edge-postreq)",
+      strokeWidth: highlighted ? 3.5 : 1.75,
       opacity,
     };
   }
-  return { stroke: dark ? "#94a3b8" : "#64748b", strokeWidth: base, opacity };
+  return {
+    stroke: dark ? "var(--color-edge-prereq-dark)" : "var(--color-edge-prereq)",
+    strokeWidth: base,
+    opacity,
+  };
 }
 
 function edgeMarkerColor(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean) {
   if (kind === "exclusion") {
-    return highlighted ? (dark ? "#fdba74" : "#c2410c") : dark ? "#fb923c" : "#ea580c";
+    return highlighted
+      ? dark
+        ? "var(--color-edge-exclusion-strong-dark)"
+        : "var(--color-edge-exclusion-strong)"
+      : dark
+        ? "var(--color-edge-exclusion-dark)"
+        : "var(--color-edge-exclusion)";
   }
   if (kind === "corequisite") {
-    return highlighted ? (dark ? "#bae6fd" : "#0ea5e9") : dark ? "#7dd3fc" : "#38bdf8";
+    return highlighted
+      ? dark
+        ? "var(--color-edge-coreq-strong-dark)"
+        : "var(--color-edge-coreq-strong)"
+      : dark
+        ? "var(--color-edge-coreq-dark)"
+        : "var(--color-edge-coreq)";
   }
-  if (highlighted) return dark ? "#34d399" : "#059669";
+  if (highlighted) return dark ? "var(--color-edge-active-dark)" : "var(--color-edge-active)";
   if (kind === "prerequisite") {
-    return dark ? "#94a3b8" : "#64748b";
+    return dark ? "var(--color-edge-prereq-dark)" : "var(--color-edge-prereq)";
   }
-  return dark ? "#c084fc" : "#9333ea";
+  return dark ? "var(--color-edge-postreq-dark)" : "var(--color-edge-postreq)";
 }
 
 const DEFAULT_EDGE_OPACITY = 0.6;
@@ -296,10 +324,6 @@ export function CourseGraph({
   const allNodes = useMemo(
     () => [...nodes, ...ghostNodes, ...missingNodes],
     [nodes, ghostNodes, missingNodes],
-  );
-  const missingNodeIds = useMemo(
-    () => new Set(missingNodes.map((node) => node.id)),
-    [missingNodes],
   );
   const boolNodeIds = useMemo(() => new Set(boolNodes.map((node) => node.id)), [boolNodes]);
 
@@ -715,9 +739,7 @@ export function CourseGraph({
       const dimmed = isHovering && !hoverHighlighted;
       const hidden =
         !visible || hiddenByCompression || hiddenAsReverseDuplicate || hiddenEdgeKindSet.has(kind);
-      const touchesMissing = missingNodeIds.has(edge.source) || missingNodeIds.has(edge.target);
-
-      const deps = [edge, hidden, highlighted, dimmed, touchesMissing, hasReverseEdge, dark];
+      const deps = [edge, hidden, highlighted, dimmed, hasReverseEdge, dark];
 
       return styleEdge(edge.id, deps, () => {
         const baseStyle = edgeStyle(kind, dark, highlighted, dimmed);
@@ -728,8 +750,7 @@ export function CourseGraph({
           hidden,
           style: {
             ...baseStyle,
-            ...(touchesMissing ? { strokeDasharray: "5 4" } : {}),
-            opacity: touchesMissing && !hidden && !highlighted ? baseOpacity * 0.6 : baseOpacity,
+            opacity: baseOpacity,
             transition: "opacity 150ms ease",
           },
           markerStart:
@@ -757,7 +778,6 @@ export function CourseGraph({
     hoverHighlightedNodeIds,
     hoverDirectRelatedNodeIds,
     hoverPathNodeId,
-    missingNodeIds,
     nodeVisibility,
     onAddCourse,
     onOpenCourseInfo,
@@ -842,12 +862,12 @@ export function CourseGraph({
     const style = document.createElement("style");
     style.textContent = `
       .react-flow__controls button {
-        background: ${dark ? "#252a33" : "#faf9f6"};
-        border-color: ${dark ? "#475569" : "#e2e8f0"};
-        color: ${dark ? "#e2e8f0" : "#334155"};
+        background: ${dark ? "var(--color-panel)" : "var(--color-surface)"};
+        border-color: ${dark ? "var(--color-control-border-dark)" : "var(--color-control-border)"};
+        color: ${dark ? "var(--color-control-text-dark)" : "var(--color-control-text)"};
       }
       .react-flow__controls button:hover {
-        background: ${dark ? "#1f242d" : "#f3f1ec"};
+        background: ${dark ? "var(--color-input)" : "var(--color-control-hover)"};
       }
     `;
     document.head.appendChild(style);
@@ -858,13 +878,13 @@ export function CourseGraph({
     return (
       <div
         ref={containerRef}
-        className="absolute inset-0 bg-[#f4f2ed] dark:bg-[#1a1d23]"
+        className="absolute inset-0 bg-canvas dark:bg-base"
       />
     );
   }
 
   return (
-    <div ref={containerRef} className="absolute inset-0 bg-[#f4f2ed] dark:bg-[#1a1d23]">
+    <div ref={containerRef} className="absolute inset-0 bg-canvas dark:bg-base">
       <ReactFlow
         nodes={flowNodes}
         edges={flowEdges}
@@ -889,7 +909,7 @@ export function CourseGraph({
         onlyRenderVisibleElements={flowNodes.length > CULL_OFFSCREEN_NODE_COUNT}
         proOptions={{ hideAttribution: true }}
       >
-        <Background gap={20} color={dark ? "#334155" : "#cbd5e1"} />
+        <Background gap={20} color={dark ? "var(--color-canvas-dots-dark)" : "var(--color-canvas-dots)"} />
         <Controls showInteractive={false} />
       </ReactFlow>
 
@@ -898,7 +918,7 @@ export function CourseGraph({
           <div
             role="status"
             aria-live="polite"
-            className="flex w-56 flex-col gap-2.5 rounded-2xl border border-slate-200 bg-surface/95 px-4 py-3 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-[#1f242d]/95"
+            className="flex w-56 flex-col gap-2.5 rounded-2xl border border-slate-200 bg-surface/95 px-4 py-3 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-input/95"
           >
             <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
               Loading graph…

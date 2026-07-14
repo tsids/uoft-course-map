@@ -59,7 +59,7 @@ export function SettingsPanel({
         className={[
           "flex h-9 w-9 items-center justify-center rounded-lg border shadow-sm backdrop-blur transition",
           "bg-surface/95 text-slate-600 hover:border-blue-400 hover:text-blue-600",
-          "dark:bg-[#252a33]/95 dark:text-slate-300 dark:hover:border-blue-500 dark:hover:text-blue-400",
+          "dark:bg-panel/95 dark:text-slate-300 dark:hover:border-blue-500 dark:hover:text-blue-400",
           open
             ? "border-blue-400 text-blue-600 dark:border-blue-500 dark:text-blue-400"
             : "border-slate-200/80 dark:border-slate-700/80",
@@ -69,7 +69,7 @@ export function SettingsPanel({
       </button>
 
       {open && (
-        <div className="w-[min(18rem,calc(100vw-2rem))] rounded-xl border border-slate-200/80 bg-surface/95 p-3 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-[#252a33]/95">
+        <div className="w-[min(18rem,calc(100vw-2rem))] rounded-xl border border-slate-200/80 bg-surface/95 p-3 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-panel/95">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Settings</h2>
             <button
@@ -95,14 +95,12 @@ export function SettingsPanel({
 
           <div className="flex flex-col gap-0.5">
             <SettingCheckbox
-              label="Highlight courses with no prerequisites"
-              description="Highlight entry-level courses."
+              label="Highlight courses with no prereqs"
               checked={settings.showNoPrerequisites}
               onChange={(showNoPrerequisites) => onSettingsChange({ showNoPrerequisites })}
             />
             <SettingCheckbox
-              label="Recursive postrequisites"
-              description="Keep expanding: courses unlocked by your postrequisites, and so on."
+              label="Expand postrequisites recursively"
               checked={settings.recursivePostrequisites}
               onChange={(recursivePostrequisites) => onSettingsChange({ recursivePostrequisites })}
             />
@@ -121,7 +119,7 @@ export function SettingsPanel({
               <select
                 value={settings.maxCourses}
                 onChange={(event) => onSettingsChange({ maxCourses: Number(event.target.value) })}
-                className="rounded-md border border-slate-200 bg-surface px-2 py-1 text-sm text-slate-800 outline-none focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100"
+                className="rounded-md border border-slate-200 bg-surface px-2 py-1 text-sm text-slate-800 outline-none focus:border-blue-400 dark:border-slate-600 dark:bg-input dark:text-slate-100"
               >
                 {MAX_COURSES_OPTIONS.map((option) => (
                   <option key={option} value={option}>

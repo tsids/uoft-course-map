@@ -3,7 +3,41 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-surface: #faf9f6;
+  --color-surface: #ffffff;
+  --color-canvas: #d8e0ec;
+  --color-postreq: #f2f0fb;
+  --color-postreq-dark: #151d33;
+  --color-base: #090e1a;
+  --color-panel: #1a2740;
+  --color-input: #131e33;
+  --color-header: #101a2e;
+  --color-modal: #0b1220;
+  --color-hint: #16223c;
+
+  /* graph edge palette */
+  --color-edge-coreq: #0ea5e9;
+  --color-edge-coreq-dark: #38bdf8;
+  --color-edge-coreq-strong: #0284c7;
+  --color-edge-coreq-strong-dark: #3b82f6;
+  --color-edge-exclusion: #ea580c;
+  --color-edge-exclusion-dark: #f97316;
+  --color-edge-exclusion-strong: #f97316;
+  --color-edge-exclusion-strong-dark: #fb923c;
+  --color-edge-active: #059669;
+  --color-edge-active-dark: #34d399;
+  --color-edge-postreq: #8b3fc9;
+  --color-edge-postreq-dark: #b18ad9;
+  --color-edge-prereq: #64748b;
+  --color-edge-prereq-dark: #94a3b8;
+
+  /* react-flow controls + background */
+  --color-control-border: #e2e8f0;
+  --color-control-border-dark: #475569;
+  --color-control-text: #334155;
+  --color-control-text-dark: #e2e8f0;
+  --color-control-hover: #eef2f8;
+  --color-canvas-dots: #c4cedd;
+  --color-canvas-dots-dark: #334155;
 }
 
 html,
@@ -15,13 +49,13 @@ body,
 
 html,
 body {
-  background-color: #f4f2ed;
+  background-color: var(--color-canvas);
   color-scheme: light;
 }
 
 html.dark,
 html.dark body {
-  background-color: #1a1d23;
+  background-color: var(--color-base);
   color-scheme: dark;
 }
 
@@ -35,6 +69,16 @@ body {
   [role="button"]:not(:disabled),
   summary {
     cursor: pointer;
+  }
+}
+
+@keyframes hint-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
   }
 }
 

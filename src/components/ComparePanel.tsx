@@ -76,7 +76,7 @@ function SummarySection({
               type="button"
               onClick={() => onOpenCourseInfo(code)}
               title={`View details for ${code}`}
-              className="rounded border border-slate-200 bg-surface px-1.5 py-0.5 text-[10px] font-medium text-slate-700 transition hover:border-blue-400 hover:text-blue-600 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-400"
+              className="rounded border border-slate-200 bg-surface px-1.5 py-0.5 text-[10px] font-medium text-slate-700 transition hover:border-blue-400 hover:text-blue-600 dark:border-slate-600 dark:bg-input dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-400"
             >
               {code}
             </button>
@@ -262,7 +262,7 @@ export function ComparePanel({
           "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium shadow-sm backdrop-blur transition",
           active
             ? "border-blue-400 bg-blue-50/95 text-blue-700 dark:border-blue-500 dark:bg-blue-500/15 dark:text-blue-300"
-            : "border-slate-200/80 bg-surface/95 text-slate-600 hover:border-blue-400 hover:text-blue-600 dark:border-slate-700/80 dark:bg-[#252a33]/95 dark:text-slate-300 dark:hover:border-blue-500 dark:hover:text-blue-400",
+            : "border-slate-200/80 bg-surface/95 text-slate-600 hover:border-blue-400 hover:text-blue-600 dark:border-slate-700/80 dark:bg-panel/95 dark:text-slate-300 dark:hover:border-blue-500 dark:hover:text-blue-400",
         ].join(" ")}
       >
         <GitCompareArrows className="h-4 w-4" />
@@ -270,7 +270,7 @@ export function ComparePanel({
       </button>
 
       {active && expanded && (
-        <div className="w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-slate-200/80 bg-surface/95 p-3 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-[#252a33]/95">
+        <div className="w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-slate-200/80 bg-surface/95 p-3 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-panel/95">
           <div className="mb-2 flex items-center justify-between gap-2">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Compare postrequisites
@@ -278,7 +278,7 @@ export function ComparePanel({
             <button
               type="button"
               onClick={onSwap}
-              disabled={rootsA.length === 0 && rootsB.length === 0}
+              disabled={rootsA.length === 0 || rootsB.length === 0}
               aria-label="Swap groups"
               title="Swap groups"
               className="grid h-6 w-6 place-items-center rounded-md border border-slate-200 text-slate-500 transition hover:border-blue-400 hover:text-blue-600 disabled:cursor-default disabled:opacity-40 dark:border-slate-600 dark:text-slate-400 dark:hover:border-blue-500 dark:hover:text-blue-400"
@@ -292,7 +292,7 @@ export function ComparePanel({
               <span className="grid h-4 w-4 place-items-center rounded-full bg-orange-500 text-[9px] font-bold text-white">
                 A
               </span>
-              Group A — current selection
+              Group A - current selection
             </span>
             {rootsA.length > 0 ? (
               <div className="flex flex-wrap items-center gap-1">
@@ -383,14 +383,14 @@ export function ComparePanel({
                     submit();
                   }
                 }}
-                className="w-full rounded-md border border-slate-200 bg-surface px-2 py-1.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100"
+                className="w-full rounded-md border border-slate-200 bg-surface px-2 py-1.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-400 dark:border-slate-600 dark:bg-input dark:text-slate-100"
               />
 
               {showSuggestions && (
                 <ul
                   id="compare-suggestions"
                   role="listbox"
-                  className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 max-h-48 overflow-y-auto rounded-md border border-slate-200 bg-surface py-1 shadow-lg dark:border-slate-600 dark:bg-[#1f242d]"
+                  className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 max-h-48 overflow-y-auto rounded-md border border-slate-200 bg-surface py-1 shadow-lg dark:border-slate-600 dark:bg-input"
                 >
                   {suggestions.map((match, index) => (
                     <li key={match.code} role="option" aria-selected={index === activeIndex}>
@@ -474,7 +474,7 @@ export function ComparePanel({
           {!comparing && (
             <p className="mt-3 border-t border-slate-200/70 pt-2 text-[11px] text-slate-400 dark:border-slate-700/70 dark:text-slate-500">
               {rootsA.length === 0
-                ? "Group A is empty — add courses with the main search box."
+                ? "Group A is empty - add courses with the main search box."
                 : "Add at least one course to group B to see the comparison."}
             </p>
           )}

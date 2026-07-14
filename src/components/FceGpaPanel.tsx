@@ -73,7 +73,7 @@ function NumberField({
           commit(event.target.value);
         }}
         onBlur={() => setDraft(null)}
-        className="w-16 rounded-md border border-slate-200 bg-surface px-2 py-1 text-right text-sm text-slate-800 outline-none transition focus:border-blue-400 dark:border-slate-600 dark:bg-[#1f242d] dark:text-slate-100 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="w-16 rounded-md border border-slate-200 bg-surface px-2 py-1 text-right text-sm text-slate-800 outline-none transition focus:border-blue-400 dark:border-slate-600 dark:bg-input dark:text-slate-100 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
     </label>
   );
@@ -91,7 +91,7 @@ export function FceGpaPanel({
   return (
     <div
       className={[
-        "pointer-events-auto rounded-xl border border-slate-200/80 bg-surface/95 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-[#252a33]/95",
+        "pointer-events-auto rounded-xl border border-slate-200/80 bg-surface/95 shadow-lg backdrop-blur dark:border-slate-700/80 dark:bg-panel/95",
         open ? "w-[min(15rem,calc(100vw-2rem))]" : "w-auto max-w-[calc(100vw-2rem)]",
       ].join(" ")}
     >
