@@ -102,3 +102,11 @@ body {
 .react-flow .react-flow__node button:not(:disabled) {
   cursor: default;
 }
+
+.course-graph.spotlighting .react-flow__node:not(.spotlit) {
+  opacity: 0.35;
+}
+
+.course-graph.spotlighting .react-flow__edge:not(.spotlit) {
+  opacity: 0.25;
+}

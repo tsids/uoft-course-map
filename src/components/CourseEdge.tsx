@@ -12,7 +12,16 @@ function CourseEdgeComponent({ id, style, markerStart, markerEnd, data }: EdgePr
   const { path } = (data ?? {}) as CourseEdgeData;
   if (!path) return null;
 
-  return <BaseEdge id={id} path={path} style={style} markerStart={markerStart} markerEnd={markerEnd} />;
+  return (
+    <BaseEdge
+      id={id}
+      path={path}
+      style={style}
+      markerStart={markerStart}
+      markerEnd={markerEnd}
+      interactionWidth={0}
+    />
+  );
 }
 
 export const CourseEdge = memo(CourseEdgeComponent);

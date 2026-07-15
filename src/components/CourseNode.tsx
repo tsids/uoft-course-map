@@ -12,7 +12,6 @@ export type CourseNodeData = {
   course: GraphNode;
   selected?: boolean;
   highlighted?: boolean;
-  dimmed?: boolean;
   diff?: DiffSide | null;
   roleTint?: "prerequisite" | "postrequisite" | null;
   showNoPrerequisites?: boolean;
@@ -23,7 +22,7 @@ export type CourseNodeData = {
 };
 
 function CourseNodeComponent({ data }: NodeProps) {
-  const { course, selected, highlighted, dimmed, diff, roleTint, showNoPrerequisites, onOpenInfo, onHide, onAdd } =
+  const { course, selected, highlighted, diff, roleTint, showNoPrerequisites, onOpenInfo, onHide, onAdd } =
     data as CourseNodeData;
 
   const kind: "prerequisite" | "postrequisite" | null = course.isGhost
@@ -81,7 +80,6 @@ function CourseNodeComponent({ data }: NodeProps) {
         !course.hasPrerequisites && showNoPrerequisites
           ? "outline-2 outline-cyan-500/70"
           : "",
-        dimmed ? "opacity-35" : "opacity-100",
       ].join(" ")}
     >
       <Handle

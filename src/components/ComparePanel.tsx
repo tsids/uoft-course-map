@@ -111,14 +111,14 @@ export function ComparePanel({
 
   useEffect(() => {
     if (!active || !expanded) return;
-    const handlePointerDown = (event: MouseEvent) => {
+    const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (containerRef.current?.contains(target)) return;
       if ((target as Element).closest?.("[data-modal-overlay]")) return;
       setExpanded(false);
     };
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () => document.removeEventListener("pointerdown", handlePointerDown, true);
   }, [active, expanded]);
 
   useEffect(() => {
@@ -181,7 +181,6 @@ export function ComparePanel({
       try {
         const detail = await fetchCourseDetail(part);
         if (existing.has(detail.code)) {
-          errors.push(`Course already added: ${detail.code}`);
           continue;
         }
         existing.add(detail.code);
@@ -198,11 +197,7 @@ export function ComparePanel({
     clearInput();
     inputRef.current?.focus();
 
-    if (errors.length > 0) {
-      onResolveError(errors.join("; "));
-    } else if (toAdd.length > 0) {
-      onResolveError(null);
-    }
+    onResolveError(errors.length > 0 ? errors.join("; ") : null);
   };
 
   const submit = () => {

@@ -135,6 +135,18 @@ export default function App() {
     parseRoots,
   );
   const [resolveError, setResolveError] = useState<string | null>(null);
+  const [resolveErrorFading, setResolveErrorFading] = useState(false);
+
+  useEffect(() => {
+    setResolveErrorFading(false);
+    if (!resolveError) return;
+    const fadeTimer = setTimeout(() => setResolveErrorFading(true), 3000);
+    const clearTimer = setTimeout(() => setResolveError(null), 3500);
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(clearTimer);
+    };
+  }, [resolveError]);
   const [detailCourseCode, setDetailCourseCode] = useState<string | null>(null);
   const [courseDetail, setCourseDetail] = useState<CourseDetail | null>(null);
   const [courseDetailLoading, setCourseDetailLoading] = useState(false);
@@ -162,11 +174,13 @@ export default function App() {
 
   const statusVisible = Boolean(loading || error || resolveError || truncated);
 
+  const [layoutPending, setLayoutPending] = useState(true);
   const graphReady = !loading && !error;
+  const graphDisplayed = graphReady && !layoutPending;
   const showSearchHint =
     graphReady && !hintsDismissed.includes("search") && roots.length === 0;
   const showLegendHint =
-    graphReady && !hintsDismissed.includes("legend") && roots.length > 0;
+    graphDisplayed && !hintsDismissed.includes("legend") && roots.length > 0;
   const showCompareHint =
     graphReady &&
     hintsDismissed.includes("legend") &&
@@ -379,6 +393,7 @@ export default function App() {
             onAddCourse={addRoot}
             onOpenCourseInfo={handleOpenCourseInfo}
             onHideCourse={handleHideCourse}
+            onLayoutPendingChange={setLayoutPending}
           />
         </Suspense>
 
@@ -390,7 +405,7 @@ export default function App() {
         />
 
         {statusVisible && (
-          <div className={`pointer-events-none absolute bottom-4 ${nodes.length + ghostNodes.length + missingNodes.length > 0 ? "left-14" : "left-4"} z-10 rounded-md border border-slate-200 bg-surface/90 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-panel/90 dark:text-slate-300`}>
+          <div className={`pointer-events-none absolute bottom-4 ${nodes.length + ghostNodes.length + missingNodes.length > 0 ? "left-14" : "left-4"} z-10 rounded-md border border-slate-200 bg-surface/90 px-3 py-2 text-xs text-slate-600 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-panel/90 dark:text-slate-300 ${!loading && !error && resolveError ? `transition-opacity duration-500 ${resolveErrorFading ? "opacity-0" : "opacity-100"}` : ""}`}>
             {loading && "Loading courses..."}
             {!loading && error && error}
             {!loading && !error && resolveError && resolveError}
@@ -518,7 +533,7 @@ export default function App() {
           <Hint
             text="Search a course or subject area to build your map."
             arrow="top"
-            className="left-4 top-[4.75rem]"
+            className="left-4 top-[7.5rem]"
             onDismiss={() => dismissHint("search")}
           />
         )}

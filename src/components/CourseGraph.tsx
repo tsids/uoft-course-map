@@ -9,6 +9,7 @@ import {
   type ReactFlowInstance,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import fnv1a from "@sindresorhus/fnv1a";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BoolGraphNode, DiffSide, GraphEdge, GraphNode } from "../types/graph";
 import type { SettingsState } from "../types/filters";
@@ -40,6 +41,7 @@ type CourseGraphProps = {
   onAddCourse?: (code: string) => void;
   onOpenCourseInfo?: (code: string) => void;
   onHideCourse?: (code: string) => void;
+  onLayoutPendingChange?: (pending: boolean) => void;
 };
 
 type LayoutResult = Awaited<ReturnType<typeof layoutGraph>>;
@@ -53,9 +55,9 @@ const edgeTypes: EdgeTypes = {
   course: CourseEdge,
 };
 
-function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean, dimmed: boolean) {
+function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean) {
   const base = highlighted ? 3.5 : 2;
-  const opacity = dimmed ? 0.15 : highlighted ? 1 : DEFAULT_EDGE_OPACITY;
+  const opacity = highlighted ? 1 : DEFAULT_EDGE_OPACITY;
 
   if (kind === "corequisite") {
     return {
@@ -68,7 +70,7 @@ function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean,
           : "var(--color-edge-coreq)",
       strokeWidth: highlighted ? 3.5 : 2,
       strokeDasharray: "6 4",
-      opacity: dimmed ? 0.15 : highlighted ? 1 : 0.9,
+      opacity,
     };
   }
   if (kind === "exclusion") {
@@ -82,7 +84,7 @@ function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean,
           : "var(--color-edge-exclusion)",
       strokeWidth: highlighted ? 3.5 : 2,
       strokeDasharray: "4 4",
-      opacity: dimmed ? 0.15 : highlighted ? 1 : 0.9,
+      opacity,
     };
   }
   if (highlighted) {
@@ -95,7 +97,7 @@ function edgeStyle(kind: GraphEdge["kind"], dark: boolean, highlighted: boolean,
   if (kind === "postrequisite") {
     return {
       stroke: dark ? "var(--color-edge-postreq-dark)" : "var(--color-edge-postreq)",
-      strokeWidth: highlighted ? 3.5 : 1.75,
+      strokeWidth: 1.75,
       opacity,
     };
   }
@@ -133,7 +135,7 @@ function edgeMarkerColor(kind: GraphEdge["kind"], dark: boolean, highlighted: bo
 }
 
 const DEFAULT_EDGE_OPACITY = 0.6;
-const CULL_OFFSCREEN_NODE_COUNT = 400;
+const CULL_OFFSCREEN_NODE_COUNT = 200;
 const LAYOUT_CACHE_LIMIT = 20;
 
 const layoutCache = new Map<string, LayoutResult>();
@@ -309,6 +311,7 @@ export function CourseGraph({
   onAddCourse,
   onOpenCourseInfo,
   onHideCourse,
+  onLayoutPendingChange,
 }: CourseGraphProps) {
   const dark = theme === "dark";
   const hiddenEdgeKindSet = useMemo(
@@ -330,6 +333,7 @@ export function CourseGraph({
   useEffect(() => {
     const element = containerRef.current;
     if (!element) return;
+    let timer: number | null = null;
     const update = () => {
       const width = Math.round(element.clientWidth / 50) * 50;
       const height = Math.round(element.clientHeight / 50) * 50;
@@ -337,9 +341,15 @@ export function CourseGraph({
       setViewportHeight((prev) => (prev === height ? prev : height));
     };
     update();
-    const observer = new ResizeObserver(update);
+    const observer = new ResizeObserver(() => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(update, 250);
+    });
     observer.observe(element);
-    return () => observer.disconnect();
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      observer.disconnect();
+    };
   }, []);
 
   const hoverPathNodeId = spotlightNodeId;
@@ -467,7 +477,10 @@ export function CourseGraph({
     const visibility = [...nodeVisibility.entries()]
       .map(([id, visible]) => (visible ? id : `!${id}`))
       .join(",");
-    return `${viewportWidth}x${viewportHeight}::${nodeIds}::${boolIds}::${edgeKeys}::${visibility}`;
+    return fnv1a(
+      `${viewportWidth}x${viewportHeight}::${nodeIds}::${boolIds}::${edgeKeys}::${visibility}`,
+      { size: 64 },
+    ).toString(36);
   }, [allNodes, boolNodes, edges, nodeVisibility, viewportWidth, viewportHeight]);
 
   const lastLayoutSignature = useRef<string | null>(null);
@@ -510,6 +523,10 @@ export function CourseGraph({
     };
   }, [allNodes, boolNodes, edges, layoutSignature, nodeVisibility, viewportWidth, viewportHeight]);
 
+  useEffect(() => {
+    onLayoutPendingChange?.(layoutPending);
+  }, [layoutPending, onLayoutPendingChange]);
+
   const flowInstance = useRef<ReactFlowInstance | null>(null);
   const lastFitKey = useRef(fitViewKey);
   const fitPending = useRef(false);
@@ -543,7 +560,7 @@ export function CourseGraph({
         setLayoutProgress((current) => Math.max(current, progressBarLoadingCourses(elapsed)));
       };
       const first = window.setTimeout(advance, 0);
-      const tick = window.setInterval(advance, 50);
+      const tick = window.setInterval(advance, 100);
       return () => {
         window.clearTimeout(first);
         window.clearInterval(tick);
@@ -632,18 +649,16 @@ export function CourseGraph({
       const hoverHighlighted = hoverHighlightedNodeIds.has(node.id);
       const selectionHighlighted = selectionHighlightedNodeIds.has(node.id);
       const highlighted = hoverHighlighted || selectionHighlighted;
-      const dimmed = isHovering && !hoverHighlighted && node.type === "course";
 
       if (node.type === "bool") {
-        const boolDimmed = isHovering && !hoverHighlighted;
         const boolSelected = visible && selectedNodeIdSet.has(node.id);
         const info = boolNodeInfo.get(node.id);
-        return styleNode(node.id, [node, visible, highlighted, boolDimmed, boolSelected, info], () => ({
+        return styleNode(node.id, [node, visible, highlighted, hoverHighlighted, boolSelected, info], () => ({
           ...node,
           zIndex: highlighted || boolSelected ? 20 : 10,
+          className: hoverHighlighted ? "spotlit" : undefined,
           style: {
-            opacity: visible ? (boolDimmed ? 0.35 : 1) : 0,
-            transition: "opacity 150ms ease",
+            opacity: visible ? undefined : 0,
             pointerEvents: visible ? "auto" : "none",
           },
           selectable: false,
@@ -675,7 +690,7 @@ export function CourseGraph({
         visible,
         selected,
         highlighted,
-        dimmed,
+        hoverHighlighted,
         diff,
         roleTint,
         settings.showNoPrerequisites,
@@ -687,8 +702,9 @@ export function CourseGraph({
       return styleNode(node.id, deps, () => ({
         ...node,
         zIndex: 5,
+        className: hoverHighlighted ? "spotlit" : undefined,
         style: {
-          opacity: visible ? 1 : 0,
+          opacity: visible ? undefined : 0,
           pointerEvents: visible ? "auto" : "none",
         },
         selectable: visible,
@@ -698,7 +714,6 @@ export function CourseGraph({
           course,
           selected,
           highlighted: visible && highlighted,
-          dimmed: visible && dimmed,
           diff,
           roleTint,
           showNoPrerequisites: settings.showNoPrerequisites,
@@ -744,20 +759,18 @@ export function CourseGraph({
             )));
       const highlighted = hoverHighlighted || selectionHighlighted;
       const markerColor = edgeMarkerColor(kind, dark, highlighted);
-      const dimmed = isHovering && !hoverHighlighted;
-      const deps = [edge, highlighted, dimmed, hasReverseEdge, dark];
+      const deps = [edge, highlighted, hoverHighlighted, hasReverseEdge, dark];
 
       styledEdges.push(
         styleEdge(edge.id, deps, () => {
-          const baseStyle = edgeStyle(kind, dark, highlighted, dimmed);
-          const baseOpacity = dimmed ? 0.15 : highlighted ? 1 : DEFAULT_EDGE_OPACITY;
+          const baseStyle = edgeStyle(kind, dark, highlighted);
 
           return {
             ...edge,
+            className: hoverHighlighted ? "spotlit" : undefined,
             style: {
               ...baseStyle,
-              opacity: baseOpacity,
-              transition: "opacity 150ms ease",
+              opacity: highlighted ? 1 : DEFAULT_EDGE_OPACITY,
             },
             markerStart: hasReverseEdge
               ? { type: "arrowclosed" as const, color: markerColor }
@@ -887,7 +900,13 @@ export function CourseGraph({
   }
 
   return (
-    <div ref={containerRef} className="absolute inset-0 bg-canvas dark:bg-base">
+    <div
+      ref={containerRef}
+      className={[
+        "course-graph absolute inset-0 bg-canvas dark:bg-base",
+        hoverPathNodeId !== null ? "spotlighting" : "",
+      ].join(" ")}
+    >
       <ReactFlow
         nodes={flowNodes}
         edges={flowEdges}

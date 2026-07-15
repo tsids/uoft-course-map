@@ -349,7 +349,7 @@ function FilterChip({
     <button
       type="button"
       onClick={onClear}
-      className="inline-flex max-w-full items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700 transition hover:border-slate-300 dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-200 dark:hover:border-slate-500"
+      className="inline-flex max-w-full shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700 transition hover:border-slate-300 dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-200 dark:hover:border-slate-500"
       title={`Clear ${label} filter`}
     >
       <span className="shrink-0 font-medium text-slate-500 dark:text-slate-400">{label}:</span>
@@ -500,7 +500,6 @@ export function SearchPanel({
         continue;
       }
       if (selected.has(match.toLowerCase())) {
-        errors.push(`Subject area already added: ${match}`);
         continue;
       }
       selected.add(match.toLowerCase());
@@ -517,11 +516,7 @@ export function SearchPanel({
     setSubjectAreaActiveIndex(-1);
     subjectAreaInputRef.current?.focus();
 
-    if (errors.length > 0) {
-      onResolveError(errors.join("; "));
-    } else if (added) {
-      onResolveError(null);
-    }
+    onResolveError(errors.length > 0 ? errors.join("; ") : null);
   };
 
   const multiSelectKeys = [
@@ -585,7 +580,6 @@ export function SearchPanel({
       try {
         const detail = await fetchCourseDetail(part);
         if (existing.has(detail.code)) {
-          errors.push(`Course already added: ${detail.code}`);
           continue;
         }
         existing.add(detail.code);
@@ -602,11 +596,7 @@ export function SearchPanel({
     clearCourseSearch();
     inputRef.current?.focus();
 
-    if (errors.length > 0) {
-      onResolveError(errors.join("; "));
-    } else if (toAdd.length > 0) {
-      onResolveError(null);
-    }
+    onResolveError(errors.length > 0 ? errors.join("; ") : null);
   };
 
   const submitSearch = () => {
@@ -965,16 +955,25 @@ export function SearchPanel({
       {filters.subjectAreas.length > 0 && (
         <div
           className={[
-            "flex flex-wrap items-center gap-1.5 overflow-hidden transition-all duration-200",
-            open ? "mt-2 max-h-24 opacity-100" : "mt-1 max-h-8 opacity-90",
+            "flex items-center gap-1.5 transition-all duration-200",
+            open
+              ? "flex-wrap mt-2 max-h-24 overflow-y-auto opacity-100"
+              : "flex-nowrap mt-1 max-h-8 overflow-hidden opacity-90",
           ].join(" ")}
         >
           {filters.subjectAreas.map((subjectArea) => (
             <button
               key={subjectArea}
               type="button"
-              onClick={() => removeSubjectArea(subjectArea)}
-              className="inline-flex max-w-full items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800 transition hover:border-emerald-300 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300"
+              onPointerDown={(event) => {
+                if (open) return;
+                event.preventDefault();
+                removeSubjectArea(subjectArea);
+              }}
+              onClick={() => {
+                if (open) removeSubjectArea(subjectArea);
+              }}
+              className="inline-flex max-w-full shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800 transition hover:border-emerald-300 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300"
               title={`Remove ${subjectArea} filter`}
             >
               <span className="truncate">{subjectArea}</span>
@@ -984,41 +983,13 @@ export function SearchPanel({
         </div>
       )}
 
-      {roots.length > 0 && (
-        <div
-          className={[
-            "flex flex-wrap items-center gap-1.5 overflow-hidden transition-all duration-200",
-            open ? "mt-2 max-h-24 opacity-100" : "mt-1 max-h-8 opacity-90",
-          ].join(" ")}
-        >
-          {roots.map((code) => (
-            <button
-              key={code}
-              type="button"
-              onClick={() => onRemoveRoot(code)}
-              className="inline-flex items-center gap-1 rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-800 transition hover:border-blue-400 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300"
-            >
-              {code}
-              <X className="h-3 w-3" />
-            </button>
-          ))}
-          {open && roots.length > 1 && (
-            <button
-              type="button"
-              onClick={onClearRoots}
-              className="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-            >
-              Clear all
-            </button>
-          )}
-        </div>
-      )}
-
       {activeFilters.length > 0 && (
         <div
           className={[
-            "flex flex-wrap items-center gap-1.5 overflow-hidden transition-all duration-200",
-            open ? "mt-2 max-h-24 opacity-100" : "mt-1 max-h-16 opacity-90",
+            "flex items-center gap-1.5 transition-all duration-200",
+            open
+              ? "flex-wrap mt-2 max-h-24 overflow-y-auto opacity-100"
+              : "flex-nowrap mt-1 max-h-8 overflow-hidden opacity-90",
           ].join(" ")}
         >
           {activeFilters.map((filter) => (
@@ -1028,6 +999,45 @@ export function SearchPanel({
               value={filter.value}
               onClear={() => clearFilter(filter.key, filter.removeValue)}
             />
+          ))}
+        </div>
+      )}
+
+      {roots.length > 0 && (
+        <div
+          className={[
+            "flex items-center gap-1.5 transition-all duration-200",
+            open
+              ? "flex-wrap mt-2 max-h-24 overflow-y-auto opacity-100"
+              : "flex-nowrap mt-1 max-h-8 overflow-hidden opacity-90",
+          ].join(" ")}
+        >
+          {open && roots.length > 1 && (
+            <button
+              type="button"
+              onClick={onClearRoots}
+              className="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              Clear all
+            </button>
+          )}
+          {roots.map((code) => (
+            <button
+              key={code}
+              type="button"
+              onPointerDown={(event) => {
+                if (open) return;
+                event.preventDefault();
+                onRemoveRoot(code);
+              }}
+              onClick={() => {
+                if (open) onRemoveRoot(code);
+              }}
+              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-800 transition hover:border-blue-400 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300"
+            >
+              {code}
+              <X className="h-3 w-3" />
+            </button>
           ))}
         </div>
       )}
