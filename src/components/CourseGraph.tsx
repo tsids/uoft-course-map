@@ -1,5 +1,4 @@
 import {
-  Background,
   Controls,
   ReactFlow,
   type Edge,
@@ -135,7 +134,6 @@ function edgeMarkerColor(kind: GraphEdge["kind"], dark: boolean, highlighted: bo
 }
 
 const DEFAULT_EDGE_OPACITY = 0.6;
-const CULL_OFFSCREEN_NODE_COUNT = 200;
 const LAYOUT_CACHE_LIMIT = 20;
 
 const layoutCache = new Map<string, LayoutResult>();
@@ -655,12 +653,9 @@ export function CourseGraph({
         const info = boolNodeInfo.get(node.id);
         return styleNode(node.id, [node, visible, highlighted, hoverHighlighted, boolSelected, info], () => ({
           ...node,
+          hidden: !visible,
           zIndex: highlighted || boolSelected ? 20 : 10,
           className: hoverHighlighted ? "spotlit" : undefined,
-          style: {
-            opacity: visible ? undefined : 0,
-            pointerEvents: visible ? "auto" : "none",
-          },
           selectable: false,
           focusable: visible,
           data: {
@@ -701,12 +696,9 @@ export function CourseGraph({
 
       return styleNode(node.id, deps, () => ({
         ...node,
+        hidden: !visible,
         zIndex: 5,
         className: hoverHighlighted ? "spotlit" : undefined,
-        style: {
-          opacity: visible ? undefined : 0,
-          pointerEvents: visible ? "auto" : "none",
-        },
         selectable: visible,
         focusable: visible,
         data: {
@@ -928,10 +920,8 @@ export function CourseGraph({
         nodesDraggable={false}
         nodesConnectable={false}
         edgesFocusable={false}
-        onlyRenderVisibleElements={flowNodes.length > CULL_OFFSCREEN_NODE_COUNT}
         proOptions={{ hideAttribution: true }}
       >
-        <Background gap={20} color={dark ? "var(--color-canvas-dots-dark)" : "var(--color-canvas-dots)"} />
         <Controls showInteractive={false} />
       </ReactFlow>
 
