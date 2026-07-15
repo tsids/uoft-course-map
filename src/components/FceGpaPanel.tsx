@@ -1,5 +1,5 @@
 import { ChevronDown, RotateCcw } from "lucide-react";
-import { useState } from "react";
+import { memo, useState } from "react";
 
 type FceGpaPanelProps = {
   open: boolean;
@@ -79,7 +79,7 @@ function NumberField({
   );
 }
 
-export function FceGpaPanel({
+function FceGpaPanelComponent({
   open,
   onToggle,
   fce,
@@ -169,3 +169,5 @@ export function FceGpaPanel({
     </div>
   );
 }
+
+export const FceGpaPanel = memo(FceGpaPanelComponent);

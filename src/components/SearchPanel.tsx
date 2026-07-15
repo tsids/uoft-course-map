@@ -1,5 +1,5 @@
 import { Building2, ChevronDown, EyeOff, Search, SlidersHorizontal, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { fetchCourseDetail, resolveCourses } from "../api/client";
 import type { CourseMatch, FilterOptions } from "../types/graph";
 import type { FilterState } from "../types/filters";
@@ -359,7 +359,7 @@ function FilterChip({
   );
 }
 
-export function SearchPanel({
+function SearchPanelComponent({
   filters,
   filterOptions,
   roots,
@@ -1130,3 +1130,5 @@ export function SearchPanel({
     </div>
   );
 }
+
+export const SearchPanel = memo(SearchPanelComponent);

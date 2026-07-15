@@ -337,6 +337,77 @@ export default function App() {
     setCourseDetailLoading(false);
   }, []);
 
+  const openFeedback = useCallback(() => setSupportPanel("feedback"), []);
+  const closeSupportPanel = useCallback(() => setSupportPanel(null), []);
+
+  const handleSearchChange = useCallback(
+    (patch: Partial<FilterState>) => {
+      dismissHint("search");
+      handleFiltersChange(patch);
+    },
+    [dismissHint, handleFiltersChange],
+  );
+
+  const toggleFiltersExpanded = useCallback(() => {
+    dismissHint("search");
+    setFiltersExpanded((expanded) => !expanded);
+  }, [dismissHint]);
+
+  const handleSearchAddCourse = useCallback(
+    (code: string) => {
+      dismissHint("search");
+      handleAddCourse(code);
+    },
+    [dismissHint, handleAddCourse],
+  );
+
+  const handleSearchAddCourses = useCallback(
+    (codes: string[]) => {
+      dismissHint("search");
+      addRoots(codes);
+    },
+    [addRoots, dismissHint],
+  );
+
+  const handleCompareToggle = useCallback(() => {
+    dismissHint("compare");
+    toggleCompareMode();
+  }, [dismissHint, toggleCompareMode]);
+
+  const toggleSettingsOpen = useCallback(
+    () => setSettingsOpen((open) => !open),
+    [setSettingsOpen],
+  );
+
+  const toggleStandingOpen = useCallback(
+    () => setStandingOpen((open) => !open),
+    [setStandingOpen],
+  );
+
+  const handleFceChange = useCallback(
+    (fceOverride: number | null) =>
+      setAcademic((current) => ({ ...current, fceOverride })),
+    [setAcademic],
+  );
+
+  const handleGpaChange = useCallback(
+    (gpa: number | null) => setAcademic((current) => ({ ...current, gpa })),
+    [setAcademic],
+  );
+
+  const toggleLegendOpen = useCallback(() => {
+    dismissHint("legend");
+    setLegendOpen((open) => !open);
+  }, [dismissHint, setLegendOpen]);
+
+  const handleLegendToggleEdgeKind = useCallback(
+    (kind: GraphEdge["kind"]) => {
+      dismissHint("legend");
+      handleToggleEdgeKind(kind);
+    },
+    [dismissHint, handleToggleEdgeKind],
+  );
+
   useEffect(() => {
     if (!detailCourseCode) return;
 
@@ -367,8 +438,8 @@ export default function App() {
     <div className="flex h-full w-full flex-col overflow-hidden">
       <Header
         activePanel={supportPanel}
-        onOpenFeedback={() => setSupportPanel("feedback")}
-        onClosePanel={() => setSupportPanel(null)}
+        onOpenFeedback={openFeedback}
+        onClosePanel={closeSupportPanel}
         repositoryUrl="https://github.com/tsids/uoft-course-map"
         kofiUrl="https://ko-fi.com/tsids"
         dataUpdatedAt={filterOptions.dataUpdatedAt}
@@ -432,22 +503,10 @@ export default function App() {
               filterOptions={filterOptions}
               roots={roots}
               filtersExpanded={filtersExpanded}
-              onChange={(patch) => {
-                dismissHint("search");
-                handleFiltersChange(patch);
-              }}
-              onToggleFilters={() => {
-                dismissHint("search");
-                setFiltersExpanded((expanded) => !expanded);
-              }}
-              onAddCourse={(code) => {
-                dismissHint("search");
-                handleAddCourse(code);
-              }}
-              onAddCourses={(codes) => {
-                dismissHint("search");
-                addRoots(codes);
-              }}
+              onChange={handleSearchChange}
+              onToggleFilters={toggleFiltersExpanded}
+              onAddCourse={handleSearchAddCourse}
+              onAddCourses={handleSearchAddCourses}
               onRemoveRoot={removeRoot}
               onClearRoots={clearRoots}
               onResolveError={setResolveError}
@@ -456,10 +515,7 @@ export default function App() {
           <div className={["relative z-10", showCompareHint ? HINT_GLOW : ""].filter(Boolean).join(" ")}>
             <ComparePanel
               active={compareMode}
-              onToggle={() => {
-                dismissHint("compare");
-                toggleCompareMode();
-              }}
+              onToggle={handleCompareToggle}
               rootsA={roots}
               onRemoveA={removeRoot}
               rootsB={compareRoots}
@@ -486,7 +542,7 @@ export default function App() {
         <div className="pointer-events-none absolute right-4 top-4 z-10 flex flex-col items-end gap-2">
           <SettingsPanel
             open={settingsOpen}
-            onToggle={() => setSettingsOpen((open) => !open)}
+            onToggle={toggleSettingsOpen}
             settings={settings}
             theme={theme}
             onSettingsChange={handleSettingsChange}
@@ -494,14 +550,12 @@ export default function App() {
           />
           <FceGpaPanel
             open={standingOpen}
-            onToggle={() => setStandingOpen((open) => !open)}
+            onToggle={toggleStandingOpen}
             fce={effectiveFce}
             fceOverridden={academic.fceOverride !== null}
             gpa={academic.gpa}
-            onFceChange={(fceOverride) =>
-              setAcademic((current) => ({ ...current, fceOverride }))
-            }
-            onGpaChange={(gpa) => setAcademic((current) => ({ ...current, gpa }))}
+            onFceChange={handleFceChange}
+            onGpaChange={handleGpaChange}
           />
 
         </div>
@@ -515,17 +569,11 @@ export default function App() {
         >
           <GraphLegend
             open={legendOpen}
-            onToggle={() => {
-              dismissHint("legend");
-              setLegendOpen((open) => !open);
-            }}
+            onToggle={toggleLegendOpen}
             theme={theme}
             compareActive={compareMode && diff !== null}
             hiddenEdgeKinds={hiddenEdgeKinds}
-            onToggleEdgeKind={(kind) => {
-              dismissHint("legend");
-              handleToggleEdgeKind(kind);
-            }}
+            onToggleEdgeKind={handleLegendToggleEdgeKind}
           />
         </div>
 

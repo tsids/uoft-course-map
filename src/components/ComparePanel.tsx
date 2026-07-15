@@ -1,5 +1,5 @@
 import { ArrowLeftRight, ChevronDown, ChevronRight, GitCompareArrows, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { fetchCourseDetail, resolveCourses } from "../api/client";
 import type { CourseMatch } from "../types/graph";
 import type { DiffSummary } from "../utils/graphDiff";
@@ -87,7 +87,7 @@ function SummarySection({
   );
 }
 
-export function ComparePanel({
+function ComparePanelComponent({
   active,
   onToggle,
   rootsA,
@@ -478,3 +478,5 @@ export function ComparePanel({
     </div>
   );
 }
+
+export const ComparePanel = memo(ComparePanelComponent);

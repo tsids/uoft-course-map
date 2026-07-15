@@ -103,6 +103,25 @@ body {
   cursor: default;
 }
 
+.course-graph .react-flow__node-course.spotlit > div:not(.is-selected):not(.is-root) {
+  border-color: var(--color-emerald-500);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-emerald-400) 70%, transparent);
+}
+
+.dark .course-graph .react-flow__node-course.spotlit > div:not(.is-selected):not(.is-root) {
+  border-color: var(--color-emerald-400);
+}
+
+.course-graph .react-flow__node-bool.spotlit > div:not(.is-selected) {
+  border-color: var(--color-emerald-500);
+  color: var(--color-emerald-700);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-emerald-400) 60%, transparent);
+}
+
+.course-graph .react-flow__node-bool.spotlit {
+  z-index: 20 !important;
+}
+
 .course-graph.spotlighting .react-flow__node:not(.spotlit) {
   opacity: 0.35;
 }

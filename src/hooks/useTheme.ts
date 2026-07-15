@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const STORAGE_KEY = "darkMode";
 
@@ -21,8 +21,10 @@ export function useTheme() {
     localStorage.setItem(STORAGE_KEY, theme);
   }, [theme]);
 
-  const toggleTheme = () =>
-    setTheme((current) => (current === "dark" ? "light" : "dark"));
+  const toggleTheme = useCallback(
+    () => setTheme((current) => (current === "dark" ? "light" : "dark")),
+    [],
+  );
 
   return { theme, setTheme, toggleTheme };
 }

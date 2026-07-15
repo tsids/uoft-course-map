@@ -67,9 +67,9 @@ function CourseNodeComponent({ data }: NodeProps) {
           ? "bg-postreq dark:bg-postreq-dark"
           : "bg-surface dark:bg-panel",
         selected
-          ? "border-yellow-600 ring-2 ring-yellow-400/60 dark:border-yellow-300 dark:ring-yellow-300/50"
+          ? "is-selected border-yellow-600 ring-2 ring-yellow-400/60 dark:border-yellow-300 dark:ring-yellow-300/50"
           : course.isRoot
-            ? "border-blue-500 ring-2 ring-blue-400/40"
+            ? "is-root border-blue-500 ring-2 ring-blue-400/40"
             : highlighted
               ? "border-emerald-500 ring-[3px] ring-emerald-400/70 dark:border-emerald-400"
               : diff === "a"

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { GraphEdge } from "../types/graph";
 
@@ -75,7 +76,7 @@ function EdgeToggle({
   );
 }
 
-export function GraphLegend({
+function GraphLegendComponent({
   open,
   onToggle,
   theme,
@@ -199,3 +200,5 @@ export function GraphLegend({
     </div>
   );
 }
+
+export const GraphLegend = memo(GraphLegendComponent);

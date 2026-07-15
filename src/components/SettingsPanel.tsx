@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Moon, Settings, Sun } from "lucide-react";
 import { MAX_COURSES_OPTIONS, type SettingsState } from "../types/filters";
 
@@ -41,7 +42,7 @@ function SettingCheckbox({
   );
 }
 
-export function SettingsPanel({
+function SettingsPanelComponent({
   open,
   onToggle,
   settings,
@@ -134,3 +135,5 @@ export function SettingsPanel({
     </div>
   );
 }
+
+export const SettingsPanel = memo(SettingsPanelComponent);

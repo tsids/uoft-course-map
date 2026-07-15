@@ -646,21 +646,20 @@ export function CourseGraph({
       const visible = nodeVisibility.get(node.id) ?? false;
       const hoverHighlighted = hoverHighlightedNodeIds.has(node.id);
       const selectionHighlighted = selectionHighlightedNodeIds.has(node.id);
-      const highlighted = hoverHighlighted || selectionHighlighted;
 
       if (node.type === "bool") {
         const boolSelected = visible && selectedNodeIdSet.has(node.id);
         const info = boolNodeInfo.get(node.id);
-        return styleNode(node.id, [node, visible, highlighted, hoverHighlighted, boolSelected, info], () => ({
+        return styleNode(node.id, [node, visible, selectionHighlighted, hoverHighlighted, boolSelected, info], () => ({
           ...node,
           hidden: !visible,
-          zIndex: highlighted || boolSelected ? 20 : 10,
+          zIndex: selectionHighlighted || boolSelected ? 20 : 10,
           className: hoverHighlighted ? "spotlit" : undefined,
           selectable: false,
           focusable: visible,
           data: {
             ...(node.data as object),
-            highlighted: visible && highlighted,
+            highlighted: visible && selectionHighlighted,
             selected: boolSelected,
             visible,
             inputs: info?.inputs,
@@ -684,7 +683,7 @@ export function CourseGraph({
         course,
         visible,
         selected,
-        highlighted,
+        selectionHighlighted,
         hoverHighlighted,
         diff,
         roleTint,
@@ -705,7 +704,7 @@ export function CourseGraph({
           ...(node.data as object),
           course,
           selected,
-          highlighted: visible && highlighted,
+          highlighted: visible && selectionHighlighted,
           diff,
           roleTint,
           showNoPrerequisites: settings.showNoPrerequisites,

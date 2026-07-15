@@ -1,5 +1,5 @@
 import { CheckCircle2, ExternalLink, Heart, Github, MessageSquareText, X } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { memo, useMemo, useState, type ReactNode } from "react";
 
 import { submitFeedback } from "../api/client";
 
@@ -38,7 +38,7 @@ function SupportButton({
   );
 }
 
-export function Header({
+function HeaderComponent({
   activePanel,
   onOpenFeedback,
   onClosePanel,
@@ -351,3 +351,5 @@ export function Header({
     </>
   );
 }
+
+export const Header = memo(HeaderComponent);
