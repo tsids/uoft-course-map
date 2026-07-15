@@ -710,7 +710,8 @@ export function CourseGraph({
       }));
     });
 
-    const styledEdges: Edge[] = laidOut.edges.map((edge) => {
+    const styledEdges: Edge[] = [];
+    for (const edge of laidOut.edges) {
       const kind = (edge.data as { kind?: GraphEdge["kind"] } | undefined)?.kind ?? "postrequisite";
       const sourceVisible = nodeVisibility.get(edge.source) ?? false;
       const targetVisible = nodeVisibility.get(edge.target) ?? false;
@@ -719,6 +720,9 @@ export function CourseGraph({
       const bidirectional = kind === "corequisite" || kind === "exclusion";
       const hasReverseEdge = bidirectional && edgeIds.has(`${edge.target}|${edge.source}|${kind}`);
       const hiddenAsReverseDuplicate = hasReverseEdge && edge.source > edge.target;
+      if (!visible || hiddenByCompression || hiddenAsReverseDuplicate || hiddenEdgeKindSet.has(kind)) {
+        continue;
+      }
       const hoverHighlighted =
         isHovering &&
         visible &&
@@ -741,34 +745,29 @@ export function CourseGraph({
       const highlighted = hoverHighlighted || selectionHighlighted;
       const markerColor = edgeMarkerColor(kind, dark, highlighted);
       const dimmed = isHovering && !hoverHighlighted;
-      const hidden =
-        !visible || hiddenByCompression || hiddenAsReverseDuplicate || hiddenEdgeKindSet.has(kind);
-      const deps = [edge, hidden, highlighted, dimmed, hasReverseEdge, dark];
+      const deps = [edge, highlighted, dimmed, hasReverseEdge, dark];
 
-      return styleEdge(edge.id, deps, () => {
-        const baseStyle = edgeStyle(kind, dark, highlighted, dimmed);
-        const baseOpacity = hidden ? 0 : dimmed ? 0.15 : highlighted ? 1 : DEFAULT_EDGE_OPACITY;
+      styledEdges.push(
+        styleEdge(edge.id, deps, () => {
+          const baseStyle = edgeStyle(kind, dark, highlighted, dimmed);
+          const baseOpacity = dimmed ? 0.15 : highlighted ? 1 : DEFAULT_EDGE_OPACITY;
 
-        return {
-          ...edge,
-          hidden,
-          style: {
-            ...baseStyle,
-            opacity: baseOpacity,
-            transition: "opacity 150ms ease",
-          },
-          markerStart:
-            hidden || !hasReverseEdge
-              ? undefined
-              : { type: "arrowclosed" as const, color: markerColor },
-          markerEnd:
-            hidden
-              ? undefined
-              : { type: "arrowclosed" as const, color: markerColor },
-          zIndex: highlighted ? 2 : 0,
-        };
-      });
-    });
+          return {
+            ...edge,
+            style: {
+              ...baseStyle,
+              opacity: baseOpacity,
+              transition: "opacity 150ms ease",
+            },
+            markerStart: hasReverseEdge
+              ? { type: "arrowclosed" as const, color: markerColor }
+              : undefined,
+            markerEnd: { type: "arrowclosed" as const, color: markerColor },
+            zIndex: highlighted ? 2 : 0,
+          };
+        }),
+      );
+    }
 
     return { nodes: styledNodes, edges: styledEdges };
   }, [

@@ -1,7 +1,12 @@
 import { EyeOff, Info, Plus } from "lucide-react";
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { DiffSide, GraphNode } from "../types/graph";
+
+const COARSE_POINTER =
+  typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia("(pointer: coarse)").matches
+    : false;
 
 export type CourseNodeData = {
   course: GraphNode;
@@ -31,6 +36,8 @@ function CourseNodeComponent({ data }: NodeProps) {
       : "border-slate-200 dark:border-slate-700";
   const rootRef = useRef<HTMLDivElement>(null);
   const addRef = useRef<(() => void) | null>(null);
+  const [hovered, setHovered] = useState(false);
+  const showActions = hovered || COARSE_POINTER;
 
   useEffect(() => {
     addRef.current = onAdd ? () => onAdd(course.code) : null;
@@ -53,8 +60,10 @@ function CourseNodeComponent({ data }: NodeProps) {
   return (
     <div
       ref={rootRef}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       className={[
-        "group relative w-45 rounded-lg border px-3 py-2 text-left shadow-sm transition",
+        "group relative w-45 rounded-lg border px-3 py-2 text-left shadow-sm transition-[opacity,border-color,box-shadow,background-color]",
         kind === "postrequisite"
           ? "bg-postreq dark:bg-postreq-dark"
           : "bg-surface dark:bg-panel",
@@ -102,7 +111,7 @@ function CourseNodeComponent({ data }: NodeProps) {
         </span>
       )}
 
-      {onOpenInfo && (
+      {showActions && onOpenInfo && (
         <button
           type="button"
           aria-label={`View details for ${course.code}`}
@@ -116,7 +125,7 @@ function CourseNodeComponent({ data }: NodeProps) {
         </button>
       )}
 
-      {onAdd && !course.isRoot && (
+      {showActions && onAdd && !course.isRoot && (
         <button
           type="button"
           aria-label={`Add ${course.code} to your selected courses`}
@@ -131,7 +140,7 @@ function CourseNodeComponent({ data }: NodeProps) {
         </button>
       )}
 
-      {onHide && (
+      {showActions && onHide && (
         <button
           type="button"
           aria-label={`Hide ${course.code} from the graph`}
