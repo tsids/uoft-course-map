@@ -27,8 +27,8 @@ export function useLocalStorageState<T>(
       const stored = JSON.parse(raw) as unknown;
 
       let candidate = stored;
-      if (ttlMs) {
-        if (!isEnvelope(stored) || Date.now() - stored.savedAt > ttlMs) {
+      if (isEnvelope(stored)) {
+        if (ttlMs && Date.now() - stored.savedAt > ttlMs) {
           localStorage.removeItem(key);
           return defaultValue;
         }
@@ -46,7 +46,7 @@ export function useLocalStorageState<T>(
   });
 
   useEffect(() => {
-    if (ttlMs && isFirstRun.current) {
+    if (isFirstRun.current) {
       isFirstRun.current = false;
       return;
     }

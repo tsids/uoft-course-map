@@ -31,7 +31,7 @@ function CourseNodeComponent({ data }: NodeProps) {
 
   const roleBorder =
     kind === "postrequisite"
-      ? "border-purple-300 dark:border-purple-400/45"
+      ? "border-purple-500 dark:border-purple-400/45"
       : "border-slate-200 dark:border-slate-700";
   const rootRef = useRef<HTMLDivElement>(null);
   const addRef = useRef<(() => void) | null>(null);
@@ -62,7 +62,7 @@ function CourseNodeComponent({ data }: NodeProps) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className={[
-        "group relative w-45 rounded-lg border px-3 py-2 text-left shadow-sm transition-[opacity,border-color,box-shadow,background-color]",
+        "group relative w-45 rounded-lg border-3 px-3 py-2 text-left shadow-sm transition-[opacity,border-color,box-shadow,background-color]",
         kind === "postrequisite"
           ? "bg-postreq dark:bg-postreq-dark"
           : "bg-surface dark:bg-panel",
