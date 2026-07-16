@@ -2,6 +2,7 @@ export type CourseDetail = {
   code: string;
   name: string;
   campus: string;
+  facultyCode: string;
   description: string;
   note: string;
   prerequisitesText: string;

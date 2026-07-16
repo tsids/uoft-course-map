@@ -101,7 +101,7 @@ function SettingsPanelComponent({
               onChange={(showNoPrerequisites) => onSettingsChange({ showNoPrerequisites })}
             />
             <SettingCheckbox
-              label="Expand postrequisites recursively"
+              label="Expand post-requisites recursively"
               checked={settings.recursivePostrequisites}
               onChange={(recursivePostrequisites) => onSettingsChange({ recursivePostrequisites })}
             />

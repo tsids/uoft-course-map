@@ -415,6 +415,7 @@ export function CourseGraph({
   useEffect(() => {
     if (lastLayoutSignature.current === layoutSignature) return;
     let cancelled = false;
+    const controller = new AbortController();
     const applyLayout = (result: LayoutResult) => {
       lastLayoutSignature.current = layoutSignature;
       setLaidOut(result);
@@ -435,7 +436,7 @@ export function CourseGraph({
         return;
       }
       setLayoutPending(true);
-      layoutGraph(allNodes, boolNodes, edges, { nodeVisibility, viewport })
+      layoutGraph(allNodes, boolNodes, edges, { nodeVisibility, viewport, signal: controller.signal })
         .then((result) => {
           if (cancelled) return;
           setCachedLayout(layoutSignature, result);
@@ -452,6 +453,7 @@ export function CourseGraph({
     });
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [allNodes, boolNodes, edges, layoutSignature, nodeVisibility, viewport]);
 
@@ -836,6 +838,7 @@ export function CourseGraph({
         <EdgeCanvas edges={drawEdges} dark={dark} />
         <ReactFlow
           nodes={flowNodes}
+          onlyRenderVisibleElements
           nodeTypes={nodeTypes}
           onNodeClick={onNodeClick}
           onNodeMouseEnter={onNodeMouseEnter}

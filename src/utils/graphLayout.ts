@@ -21,6 +21,7 @@ type Side = "north" | "south" | "east" | "west";
 type LayoutOptions = {
   nodeVisibility: Map<string, boolean>;
   viewport: LayoutViewport;
+  signal?: AbortSignal;
 };
 
 export type LayoutViewport = {
@@ -198,7 +199,7 @@ export async function layoutGraph(
   edges: GraphEdge[],
   options: LayoutOptions,
 ): Promise<LayoutResult> {
-  const { nodeVisibility, viewport } = options;
+  const { nodeVisibility, viewport, signal } = options;
 
   const layoutNodes = nodes.filter((node) => nodeVisibility.get(node.id));
   const layoutBoolNodes = boolNodes.filter((node) => nodeVisibility.get(node.id));
@@ -297,7 +298,23 @@ export async function layoutGraph(
     const elk = createElk();
     let result: ElkNode;
     try {
-      result = await elk.layout(elkGraph);
+      result = await new Promise<ElkNode>((resolve, reject) => {
+        const onAbort = () => {
+          elk.terminateWorker();
+          reject(new DOMException("The layout was aborted", "AbortError"));
+        };
+        signal?.addEventListener("abort", onAbort, { once: true });
+        elk.layout(elkGraph).then(
+          (value) => {
+            signal?.removeEventListener("abort", onAbort);
+            resolve(value);
+          },
+          (error: unknown) => {
+            signal?.removeEventListener("abort", onAbort);
+            reject(error instanceof Error ? error : new Error(String(error)));
+          },
+        );
+      });
     } finally {
       elk.terminateWorker();
     }

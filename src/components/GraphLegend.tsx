@@ -155,7 +155,7 @@ function GraphLegendComponent({
           </LegendSwatch>
 
           <LegendSwatch label="Postrequisites">
-            <div className="h-5 w-9 rounded border border-purple-300 bg-postreq dark:border-purple-400/45 dark:bg-postreq-dark" />
+            <div className="h-5 w-9 rounded border border-purple-600 bg-postreq dark:border-purple-400 dark:bg-postreq-dark" />
           </LegendSwatch>
 
           <div className="mt-1 flex flex-col gap-1 border-t border-slate-200/70 pt-2 dark:border-slate-700/70">

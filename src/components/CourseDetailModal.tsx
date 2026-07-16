@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { ExternalLink, X } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import type { CourseDetail } from "../types/course";
 
@@ -38,6 +38,28 @@ type DetailField = {
   label: string;
   value: string;
 };
+
+const FACULTY_CALENDAR_HOSTS: Record<string, string> = {
+  ARTSC: "artsci.calendar.utoronto.ca",
+  APSC: "engineering.calendar.utoronto.ca",
+  FIS: "ischool.calendar.utoronto.ca",
+  FPEH: "kpe.calendar.utoronto.ca",
+  MUSIC: "music.calendar.utoronto.ca",
+  ARCLA: "daniels.calendar.utoronto.ca",
+  ERIN: "utm.calendar.utoronto.ca",
+  SCAR: "utsc.calendar.utoronto.ca",
+};
+
+const CAMPUS_CALENDAR_HOSTS: Record<string, string> = {
+  "St. George": "artsci.calendar.utoronto.ca",
+  "Scarborough": "utsc.calendar.utoronto.ca",
+  "University of Toronto at Mississauga": "utm.calendar.utoronto.ca",
+};
+
+function calendarUrl(course: CourseDetail): string | null {
+  const host = FACULTY_CALENDAR_HOSTS[course.facultyCode] ?? CAMPUS_CALENDAR_HOSTS[course.campus];
+  return host ? `https://${host}/course/${course.code}` : null;
+}
 
 function buildFields(course: CourseDetail): DetailField[] {
   const fields: DetailField[] = [];
@@ -107,6 +129,7 @@ export function CourseDetailModal({ course, loading, error, onClose }: CourseDet
   }, [onClose]);
 
   const fields = useMemo(() => (course ? buildFields(course) : []), [course]);
+  const calendarLink = course ? calendarUrl(course) : null;
 
   if (!course && !loading && !error) return null;
 
@@ -135,6 +158,18 @@ export function CourseDetailModal({ course, loading, error, onClose }: CourseDet
                 className="text-lg font-semibold leading-snug text-slate-900 dark:text-slate-100"
               >
                 {course.code}: {course.name}
+                {calendarLink && (
+                  <a
+                    href={calendarLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Open ${course.code} in the official calendar`}
+                    title="View in the official calendar"
+                    className="ml-2 inline-block align-[-2px] text-slate-400 transition hover:text-blue-500 dark:text-slate-500 dark:hover:text-blue-400"
+                  >
+                    <ExternalLink className="h-4.5 w-4.5" />
+                  </a>
+                )}
               </h2>
             )}
           </div>

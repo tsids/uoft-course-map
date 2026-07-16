@@ -31,7 +31,7 @@ function CourseNodeComponent({ data }: NodeProps) {
 
   const roleBorder =
     kind === "postrequisite"
-      ? "border-purple-500 dark:border-purple-400/45"
+      ? "border-purple-600 ring-2 ring-purple-400/40 dark:border-purple-400 dark:ring-purple-400/30"
       : "border-slate-200 dark:border-slate-700";
   const rootRef = useRef<HTMLDivElement>(null);
   const addRef = useRef<(() => void) | null>(null);

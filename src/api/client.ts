@@ -163,6 +163,7 @@ function normalizeCourseDetail(raw: CourseDetail & Record<string, unknown>): Cou
     code: String(raw.code),
     name: String(raw.name),
     campus: String(raw.campus ?? ""),
+    facultyCode: String(pick(raw.facultyCode, raw.faculty_code as string | undefined, "")),
     description: String(raw.description ?? ""),
     note: String(raw.note ?? ""),
     prerequisitesText: String(pick(raw.prerequisitesText, raw.prerequisites_text as string | undefined, "")),
