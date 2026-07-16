@@ -53,6 +53,9 @@ const nodeTypes: NodeTypes = {
 
 const LAYOUT_CACHE_LIMIT = 3;
 
+const LAYOUT_DEBOUNCE_MIN_MS = 150;
+const LAYOUT_DEBOUNCE_MAX_MS = 600;
+
 const layoutCache = new Map<string, LayoutResult>();
 
 function getCachedLayout(signature: string): LayoutResult | undefined {
@@ -416,6 +419,7 @@ export function CourseGraph({
     if (lastLayoutSignature.current === layoutSignature) return;
     let cancelled = false;
     const controller = new AbortController();
+    let debounceTimer: number | null = null;
     const applyLayout = (result: LayoutResult) => {
       lastLayoutSignature.current = layoutSignature;
       setLaidOut(result);
@@ -436,24 +440,31 @@ export function CourseGraph({
         return;
       }
       setLayoutPending(true);
-      layoutGraph(allNodes, boolNodes, edges, { nodeVisibility, viewport, signal: controller.signal })
-        .then((result) => {
-          if (cancelled) return;
-          setCachedLayout(layoutSignature, result);
-          void saveLayout(layoutSignature, result);
-          setLayoutProgress(1);
-          window.setTimeout(() => {
+      const debounceMs = Math.min(
+        LAYOUT_DEBOUNCE_MAX_MS,
+        Math.max(LAYOUT_DEBOUNCE_MIN_MS, allNodes.length + boolNodes.length),
+      );
+      debounceTimer = window.setTimeout(() => {
+        layoutGraph(allNodes, boolNodes, edges, { nodeVisibility, viewport, signal: controller.signal })
+          .then((result) => {
             if (cancelled) return;
-            applyLayout(result);
-          }, 250);
-        })
-        .catch(() => {
-          if (!cancelled) setLayoutPending(false);
-        });
+            setCachedLayout(layoutSignature, result);
+            void saveLayout(layoutSignature, result);
+            setLayoutProgress(1);
+            window.setTimeout(() => {
+              if (cancelled) return;
+              applyLayout(result);
+            }, 250);
+          })
+          .catch(() => {
+            if (!cancelled) setLayoutPending(false);
+          });
+      }, debounceMs);
     });
     return () => {
       cancelled = true;
       controller.abort();
+      if (debounceTimer !== null) window.clearTimeout(debounceTimer);
     };
   }, [allNodes, boolNodes, edges, layoutSignature, nodeVisibility, viewport]);
 
