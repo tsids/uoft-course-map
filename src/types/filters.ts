@@ -135,6 +135,7 @@ export const STORAGE_KEYS = {
   settings: "settings",
   academic: "academic",
   roots: "roots",
+  rootsHistory: "rootsHistory",
   compareRoots: "compareRoots",
   compareMode: "compareMode",
   settingsOpen: "settingsOpen",
@@ -281,6 +282,45 @@ export function parseRoots(stored: unknown): string[] | null {
   if (!Array.isArray(stored)) return null;
   if (!stored.every((item) => typeof item === "string")) return null;
   return stored;
+}
+
+export type RootsHistoryEntry = {
+  roots: string[];
+  filters: FilterState;
+  at: number;
+};
+
+export const ROOTS_HISTORY_LIMIT = 20;
+
+export function snapshotFilterState(filters: FilterState): FilterState {
+  return {
+    search: "",
+    campus: [...filters.campus],
+    subjectAreas: [...filters.subjectAreas],
+    faculty: [...filters.faculty],
+    year: [...filters.year],
+    breadth: [...filters.breadth],
+    distribution: [...filters.distribution],
+    delivery: [...filters.delivery],
+    session: [...filters.session],
+    excludeCourses: [...filters.excludeCourses],
+    excludeSubjectAreas: [...filters.excludeSubjectAreas],
+    showAllNoPrereqCourses: filters.showAllNoPrereqCourses,
+  };
+}
+
+export function parseRootsHistory(stored: unknown): RootsHistoryEntry[] | null {
+  if (!Array.isArray(stored)) return null;
+  const entries: RootsHistoryEntry[] = [];
+  for (const item of stored) {
+    if (!isRecord(item)) continue;
+    const roots = readStringArray(item.roots);
+    if (!roots || roots.length === 0) continue;
+    if (typeof item.at !== "number" || !Number.isFinite(item.at)) continue;
+    const filters = parseFilterState(item.filters) ?? { ...defaultFilters };
+    entries.push({ roots, filters: snapshotFilterState(filters), at: item.at });
+  }
+  return entries.slice(0, ROOTS_HISTORY_LIMIT);
 }
 
 export function parseBooleanFlag(stored: unknown): boolean | null {

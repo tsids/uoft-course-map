@@ -26,14 +26,32 @@ import {
   parseBooleanFlag,
   parseFilterState,
   parseRoots,
+  parseRootsHistory,
   parseSettingsState,
+  ROOTS_HISTORY_LIMIT,
+  snapshotFilterState,
   STORAGE_KEYS,
 } from "./types/filters";
 import { totalFce } from "./utils/courseCode";
+import { parseSharedState } from "./utils/shareUrl";
 import { track, trackFilterChange, trackSettingsChange } from "./utils/analytics";
-import type { FilterState, SettingsState } from "./types/filters";
+import type { FilterState, RootsHistoryEntry, SettingsState } from "./types/filters";
 
 const NO_COMPARE_ROOTS: string[] = [];
+
+const sharedState = parseSharedState(window.location.search);
+if (sharedState) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.roots, JSON.stringify(sharedState.roots));
+    localStorage.setItem(
+      STORAGE_KEYS.filters,
+      JSON.stringify({ value: sharedState.filters, savedAt: Date.now() }),
+    );
+  } catch {
+    void 0;
+  }
+  window.history.replaceState(null, "", window.location.pathname);
+}
 
 const TOGGLEABLE_EDGE_KINDS: GraphEdge["kind"][] = [
   "prerequisite",
@@ -124,6 +142,41 @@ export default function App() {
   );
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [roots, setRoots] = useLocalStorageState(STORAGE_KEYS.roots, [], parseRoots);
+  const [rootsHistory, setRootsHistory] = useLocalStorageState<RootsHistoryEntry[]>(
+    STORAGE_KEYS.rootsHistory,
+    [],
+    parseRootsHistory,
+  );
+  useEffect(() => {
+    if (sharedState) {
+      track("share-link-opened", { roots: sharedState.roots.length });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (roots.length === 0) return;
+    const timer = window.setTimeout(() => {
+      const snapshot = snapshotFilterState(filters);
+      setRootsHistory((current) => {
+        const latest = current[0];
+        const sameRoots =
+          latest &&
+          latest.roots.length === roots.length &&
+          latest.roots.every((code) => roots.includes(code));
+        if (sameRoots) {
+          if (JSON.stringify(latest.filters) === JSON.stringify(snapshot)) {
+            return current;
+          }
+          return [{ ...latest, filters: snapshot }, ...current.slice(1)];
+        }
+        return [{ roots: [...roots], filters: snapshot, at: Date.now() }, ...current].slice(
+          0,
+          ROOTS_HISTORY_LIMIT,
+        );
+      });
+    }, 2000);
+    return () => window.clearTimeout(timer);
+  }, [roots, filters, setRootsHistory]);
   const [compareMode, setCompareMode] = useLocalStorageState(
     STORAGE_KEYS.compareMode,
     false,
@@ -369,6 +422,17 @@ export default function App() {
     [addRoots, dismissHint],
   );
 
+  const handleRestoreSelection = useCallback(
+    (entry: RootsHistoryEntry) => {
+      dismissHint("search");
+      track("history-restored", { count: entry.roots.length });
+      setRoots([...entry.roots]);
+      setFilters(snapshotFilterState(entry.filters));
+      setSelectedNodeIds([]);
+    },
+    [dismissHint, setFilters, setRoots],
+  );
+
   const handleCompareToggle = useCallback(() => {
     dismissHint("compare");
     toggleCompareMode();
@@ -502,6 +566,7 @@ export default function App() {
               filters={filters}
               filterOptions={filterOptions}
               roots={roots}
+              rootsHistory={rootsHistory}
               filtersExpanded={filtersExpanded}
               onChange={handleSearchChange}
               onToggleFilters={toggleFiltersExpanded}
@@ -509,6 +574,7 @@ export default function App() {
               onAddCourses={handleSearchAddCourses}
               onRemoveRoot={removeRoot}
               onClearRoots={clearRoots}
+              onRestoreSelection={handleRestoreSelection}
               onResolveError={setResolveError}
             />
           </div>

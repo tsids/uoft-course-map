@@ -1,20 +1,22 @@
-import { Building2, ChevronDown, EyeOff, Search, SlidersHorizontal, X } from "lucide-react";
+import { Building2, Check, ChevronDown, Copy, EyeOff, History, Search, Share2, SlidersHorizontal, X } from "lucide-react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { fetchCourseDetail, resolveCourses } from "../api/client";
 import type { CourseMatch, FilterOptions } from "../types/graph";
-import type { FilterState } from "../types/filters";
+import type { FilterState, RootsHistoryEntry } from "../types/filters";
 import { CAMPUS_LABELS, campusLabel, YEAR_LEVELS } from "../types/filters";
 import {
   hasMultipleCourseCodes,
   isValidCourseCodeFormat,
   parseCommaSeparatedCourses,
 } from "../utils/courseCode";
+import { buildShareUrl } from "../utils/shareUrl";
 import { track } from "../utils/analytics";
 
 type SearchPanelProps = {
   filters: FilterState;
   filterOptions: FilterOptions;
   roots: string[];
+  rootsHistory: RootsHistoryEntry[];
   filtersExpanded: boolean;
   highlight?: boolean;
   onChange: (patch: Partial<FilterState>) => void;
@@ -23,6 +25,7 @@ type SearchPanelProps = {
   onAddCourses: (codes: string[]) => void;
   onRemoveRoot: (code: string) => void;
   onClearRoots: () => void;
+  onRestoreSelection: (entry: RootsHistoryEntry) => void;
   onResolveError: (message: string | null) => void;
 };
 
@@ -34,6 +37,38 @@ type ActiveFilter = {
 };
 
 const ACRONYM_STOP_WORDS = new Set(["and", "of", "the", "for", "in"]);
+
+function historyFilterSummary(filters: FilterState): string {
+  const parts = [
+    ...filters.session,
+    ...filters.campus.map(campusLabel),
+    ...filters.subjectAreas,
+    ...filters.faculty,
+    ...filters.year.map((year) => `Year ${year}`),
+    ...filters.breadth,
+    ...filters.distribution,
+    ...filters.delivery,
+  ];
+  if (filters.showAllNoPrereqCourses) parts.push("No prerequisites");
+  if (filters.excludeCourses.length > 0) {
+    parts.push(`Excludes ${filters.excludeCourses.join(", ")}`);
+  }
+  if (filters.excludeSubjectAreas.length > 0) {
+    parts.push(`Excludes ${filters.excludeSubjectAreas.join(", ")}`);
+  }
+  return parts.join(" · ");
+}
+
+function relativeTime(at: number): string {
+  const seconds = Math.floor((Date.now() - at) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
 function subjectAreaAcronym(subjectArea: string): string {
   return subjectArea
@@ -363,6 +398,7 @@ function SearchPanelComponent({
   filters,
   filterOptions,
   roots,
+  rootsHistory,
   filtersExpanded,
   highlight = false,
   onChange,
@@ -371,6 +407,7 @@ function SearchPanelComponent({
   onAddCourses,
   onRemoveRoot,
   onClearRoots,
+  onRestoreSelection,
   onResolveError,
 }: SearchPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -384,7 +421,37 @@ function SearchPanelComponent({
   const [subjectAreaQuery, setSubjectAreaQuery] = useState("");
   const [subjectAreaSuggestionsOpen, setSubjectAreaSuggestionsOpen] = useState(false);
   const [subjectAreaActiveIndex, setSubjectAreaActiveIndex] = useState(-1);
+  const [copiedAction, setCopiedAction] = useState<"codes" | "link" | null>(null);
+  const copiedTimer = useRef<number | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const activeFilters = getActiveFilters(filters);
+
+  useEffect(
+    () => () => {
+      if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
+    },
+    [],
+  );
+
+  const flashCopied = (action: "codes" | "link") => {
+    setCopiedAction(action);
+    if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
+    copiedTimer.current = window.setTimeout(() => setCopiedAction(null), 1500);
+  };
+
+  const copyRoots = () => {
+    void navigator.clipboard.writeText(roots.join(", ")).then(() => {
+      track("courses-copied", { count: roots.length });
+      flashCopied("codes");
+    });
+  };
+
+  const shareRoots = () => {
+    void navigator.clipboard.writeText(buildShareUrl(roots, filters)).then(() => {
+      track("share-link-copied", { roots: roots.length });
+      flashCopied("link");
+    });
+  };
 
   const yearLevelLabels = Object.fromEntries(YEAR_LEVELS.map(({ value, label }) => [value, label]));
 
@@ -643,6 +710,7 @@ function SearchPanelComponent({
           setOpen(false);
           setSuggestionsOpen(false);
           setSubjectAreaSuggestionsOpen(false);
+          setHistoryOpen(false);
         }
       }}
       className={[
@@ -1003,24 +1071,108 @@ function SearchPanelComponent({
         </div>
       )}
 
-      {roots.length > 0 && (
+      {(roots.length > 0 || rootsHistory.length > 0) && (
         <div
           className={[
-            "flex items-center gap-1.5 transition-all duration-200",
+            "flex items-center justify-between gap-3 transition-all duration-200",
             open
-              ? "flex-wrap mt-2 max-h-24 overflow-y-auto opacity-100"
-              : "flex-nowrap mt-1 max-h-8 overflow-hidden opacity-90",
+              ? "mt-2 max-h-8 opacity-100"
+              : "pointer-events-none mt-0 max-h-0 overflow-hidden opacity-0",
           ].join(" ")}
         >
-          {open && roots.length > 1 && (
+          <div className="flex items-center gap-3">
+            {roots.length > 0 && (
+              <button
+                type="button"
+                onClick={copyRoots}
+                className="inline-flex shrink-0 items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                {copiedAction === "codes" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                {copiedAction === "codes" ? "Copied" : "Copy"}
+              </button>
+            )}
+            {roots.length > 0 && (
+              <button
+                type="button"
+                onClick={shareRoots}
+                className="inline-flex shrink-0 items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                {copiedAction === "link" ? <Check className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
+                {copiedAction === "link" ? "Link copied" : "Share"}
+              </button>
+            )}
+            {rootsHistory.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setHistoryOpen((current) => !current)}
+                aria-expanded={historyOpen}
+                className={[
+                  "inline-flex shrink-0 items-center gap-1 text-xs",
+                  historyOpen
+                    ? "font-medium text-blue-600 dark:text-blue-400"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
+                ].join(" ")}
+              >
+                <History className="h-3 w-3" />
+                Recent
+              </button>
+            )}
+          </div>
+          {roots.length > 1 && (
             <button
               type="button"
               onClick={onClearRoots}
-              className="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              className="shrink-0 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
             >
               Clear all
             </button>
           )}
+        </div>
+      )}
+
+      {open && historyOpen && rootsHistory.length > 0 && (
+        <ul className="mt-1.5 max-h-48 divide-y divide-slate-100 overflow-y-auto rounded-md border border-slate-200 dark:divide-slate-700 dark:border-slate-600">
+          {rootsHistory.map((entry) => {
+            const summary = historyFilterSummary(entry.filters);
+            return (
+              <li key={entry.at}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHistoryOpen(false);
+                    onRestoreSelection(entry);
+                  }}
+                  className="flex w-full items-baseline justify-between gap-2 px-2.5 py-2 text-left text-xs transition hover:bg-slate-100 dark:hover:bg-slate-700"
+                >
+                  <span className="min-w-0">
+                    <span className="block break-words font-medium text-slate-700 dark:text-slate-200">
+                      {entry.roots.join(", ")}
+                    </span>
+                    {summary && (
+                      <span className="mt-0.5 block break-words text-[11px] text-slate-400 dark:text-slate-500">
+                        {summary}
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-[11px] text-slate-400 dark:text-slate-500">
+                    {relativeTime(entry.at)}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {roots.length > 0 && !(open && historyOpen) && (
+        <div
+          className={[
+            "flex items-center gap-1.5 transition-all duration-200",
+            open
+              ? "flex-wrap mt-1.5 max-h-24 overflow-y-auto opacity-100"
+              : "flex-nowrap mt-1 max-h-8 overflow-hidden opacity-90",
+          ].join(" ")}
+        >
           {roots.map((code) => (
             <button
               key={code}
