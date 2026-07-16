@@ -12,7 +12,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BoolGraphNode, DiffSide, GraphEdge, GraphNode } from "../types/graph";
 import type { SettingsState } from "../types/filters";
 import type { Point } from "../utils/edgeRouting";
-import { layoutGraph } from "../utils/graphLayout";
+import { layoutGraph, layoutViewport } from "../utils/graphLayout";
+import { loadLayout, saveLayout } from "../utils/layoutCache";
 import {
   buildNodeRoleMap,
   buildPrereqCollapseKeepSet,
@@ -50,7 +51,7 @@ const nodeTypes: NodeTypes = {
   bool: BoolNode,
 };
 
-const LAYOUT_CACHE_LIMIT = 20;
+const LAYOUT_CACHE_LIMIT = 3;
 
 const layoutCache = new Map<string, LayoutResult>();
 
@@ -199,13 +200,19 @@ function depsEqual(a: readonly unknown[], b: readonly unknown[]): boolean {
 
 function createStyleCache<T>() {
   const cache = new Map<string, { deps: readonly unknown[]; styled: T }>();
-  return (id: string, deps: readonly unknown[], build: () => T): T => {
+  const get = (id: string, deps: readonly unknown[], build: () => T): T => {
     const cached = cache.get(id);
     if (cached && depsEqual(cached.deps, deps)) return cached.styled;
     const styled = build();
     cache.set(id, { deps, styled });
     return styled;
   };
+  const prune = (alive: ReadonlySet<string>) => {
+    for (const id of cache.keys()) {
+      if (!alive.has(id)) cache.delete(id);
+    }
+  };
+  return { get, prune };
 }
 
 export function CourseGraph({
@@ -235,7 +242,7 @@ export function CourseGraph({
   const [spotlightNodeId, setSpotlightNodeId] = useState<string | null>(null);
   const spotlightIdRef = useRef<string | null>(null);
   const spotlightTimer = useRef<number | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [viewportWidth, setViewportWidth] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
   const allNodes = useMemo(
@@ -245,12 +252,13 @@ export function CourseGraph({
   const boolNodeIds = useMemo(() => new Set(boolNodes.map((node) => node.id)), [boolNodes]);
 
   useEffect(() => {
-    const element = containerRef.current;
-    if (!element) return;
+    if (!container) return;
     let timer: number | null = null;
     const update = () => {
-      const width = Math.round(element.clientWidth / 50) * 50;
-      const height = Math.round(element.clientHeight / 50) * 50;
+      if (!container.isConnected) return;
+      const width = Math.round(container.clientWidth / 50) * 50;
+      const height = Math.round(container.clientHeight / 50) * 50;
+      if (width === 0 || height === 0) return;
       setViewportWidth((prev) => (prev === width ? prev : width));
       setViewportHeight((prev) => (prev === height ? prev : height));
     };
@@ -259,12 +267,12 @@ export function CourseGraph({
       if (timer !== null) window.clearTimeout(timer);
       timer = window.setTimeout(update, 250);
     });
-    observer.observe(element);
+    observer.observe(container);
     return () => {
       if (timer !== null) window.clearTimeout(timer);
       observer.disconnect();
     };
-  }, []);
+  }, [container]);
 
   const hoverPathNodeId = spotlightNodeId;
   const selectedNodeIdSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
@@ -384,6 +392,11 @@ export function CourseGraph({
   const wasLayoutPending = useRef(false);
   const progressStart = useRef<number | null>(null);
 
+  const viewport = useMemo(
+    () => layoutViewport(viewportWidth || undefined, viewportHeight || undefined),
+    [viewportWidth, viewportHeight],
+  );
+
   const layoutSignature = useMemo(() => {
     const nodeIds = allNodes.map((node) => node.id).join(",");
     const boolIds = boolNodes.map((node) => node.id).join(",");
@@ -392,40 +405,45 @@ export function CourseGraph({
       .map(([id, visible]) => (visible ? id : `!${id}`))
       .join(",");
     return fnv1a(
-      `${viewportWidth}x${viewportHeight}::${nodeIds}::${boolIds}::${edgeKeys}::${visibility}`,
+      `${viewport.aspectRatio}x${viewport.gridColumns}::${nodeIds}::${boolIds}::${edgeKeys}::${visibility}`,
       { size: 64 },
     ).toString(36);
-  }, [allNodes, boolNodes, edges, nodeVisibility, viewportWidth, viewportHeight]);
+  }, [allNodes, boolNodes, edges, nodeVisibility, viewport]);
 
   const lastLayoutSignature = useRef<string | null>(null);
 
   useEffect(() => {
     if (lastLayoutSignature.current === layoutSignature) return;
     let cancelled = false;
-    Promise.resolve().then(() => {
+    const applyLayout = (result: LayoutResult) => {
+      lastLayoutSignature.current = layoutSignature;
+      setLaidOut(result);
+      setLayoutPending(false);
+    };
+    Promise.resolve().then(async () => {
       if (cancelled) return;
       const cached = getCachedLayout(layoutSignature);
       if (cached) {
-        lastLayoutSignature.current = layoutSignature;
-        setLaidOut(cached);
-        setLayoutPending(false);
+        applyLayout(cached);
+        return;
+      }
+      const stored = await loadLayout<LayoutResult>(layoutSignature);
+      if (cancelled) return;
+      if (stored) {
+        setCachedLayout(layoutSignature, stored);
+        applyLayout(stored);
         return;
       }
       setLayoutPending(true);
-      layoutGraph(allNodes, boolNodes, edges, {
-        nodeVisibility,
-        viewportWidth: viewportWidth || undefined,
-        viewportHeight: viewportHeight || undefined,
-      })
+      layoutGraph(allNodes, boolNodes, edges, { nodeVisibility, viewport })
         .then((result) => {
           if (cancelled) return;
-          lastLayoutSignature.current = layoutSignature;
           setCachedLayout(layoutSignature, result);
+          void saveLayout(layoutSignature, result);
           setLayoutProgress(1);
           window.setTimeout(() => {
             if (cancelled) return;
-            setLaidOut(result);
-            setLayoutPending(false);
+            applyLayout(result);
           }, 250);
         })
         .catch(() => {
@@ -435,7 +453,7 @@ export function CourseGraph({
     return () => {
       cancelled = true;
     };
-  }, [allNodes, boolNodes, edges, layoutSignature, nodeVisibility, viewportWidth, viewportHeight]);
+  }, [allNodes, boolNodes, edges, layoutSignature, nodeVisibility, viewport]);
 
   useEffect(() => {
     onLayoutPendingChange?.(layoutPending);
@@ -551,7 +569,12 @@ export function CourseGraph({
     return map;
   }, [boolNodes, courseById, edgeIndex]);
 
-  const [styleNode] = useState(() => createStyleCache<Node>());
+  const [styleCache] = useState(() => createStyleCache<Node>());
+
+  useEffect(() => {
+    if (!laidOut) return;
+    styleCache.prune(new Set(laidOut.nodes.map((node) => node.id)));
+  }, [laidOut, styleCache]);
 
   const flowNodes = useMemo(() => {
     if (!laidOut) return [] as Node[];
@@ -564,7 +587,7 @@ export function CourseGraph({
       if (node.type === "bool") {
         const boolSelected = visible && selectedNodeIdSet.has(node.id);
         const info = boolNodeInfo.get(node.id);
-        return styleNode(node.id, [node, visible, selectionHighlighted, hoverHighlighted, boolSelected, info], () => ({
+        return styleCache.get(node.id, [node, visible, selectionHighlighted, hoverHighlighted, boolSelected, info], () => ({
           ...node,
           hidden: !visible,
           zIndex: selectionHighlighted || boolSelected ? 20 : 10,
@@ -607,7 +630,7 @@ export function CourseGraph({
         onHideCourse,
       ];
 
-      return styleNode(node.id, deps, () => ({
+      return styleCache.get(node.id, deps, () => ({
         ...node,
         hidden: !visible,
         zIndex: 5,
@@ -644,7 +667,7 @@ export function CourseGraph({
     selectedNodeIdSet,
     selectionHighlightedNodeIds,
     settings,
-    styleNode,
+    styleCache,
   ]);
 
   const drawEdges = useMemo<DrawEdge[]>(() => {
@@ -795,7 +818,7 @@ export function CourseGraph({
   if (allNodes.length === 0) {
     return (
       <div
-        ref={containerRef}
+        ref={setContainer}
         className="absolute inset-0 bg-canvas dark:bg-base"
       />
     );
@@ -804,7 +827,7 @@ export function CourseGraph({
   return (
     <ReactFlowProvider>
       <div
-        ref={containerRef}
+        ref={setContainer}
         className={[
           "course-graph absolute inset-0 bg-canvas dark:bg-base",
           hoverPathNodeId !== null ? "spotlighting" : "",

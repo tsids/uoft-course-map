@@ -20,9 +20,29 @@ type Side = "north" | "south" | "east" | "west";
 
 type LayoutOptions = {
   nodeVisibility: Map<string, boolean>;
-  viewportWidth?: number;
-  viewportHeight?: number;
+  viewport: LayoutViewport;
 };
+
+export type LayoutViewport = {
+  aspectRatio: number;
+  gridColumns: number;
+};
+
+export function layoutViewport(viewportWidth?: number, viewportHeight?: number): LayoutViewport {
+  const maxWidth = Math.max(
+    COURSE_NODE_WIDTH * 2 + NODE_SEP,
+    (viewportWidth ?? DEFAULT_MAX_WIDTH) - MARGIN_X * 2,
+  );
+  const maxHeight = Math.max(
+    COURSE_NODE_HEIGHT * 2 + RANK_SEP,
+    (viewportHeight ?? DEFAULT_MAX_HEIGHT) - MARGIN_Y * 2,
+  );
+  const rawAspectRatio = Math.min(Math.max(maxWidth / maxHeight, 0.5), 3);
+  const aspectRatio = Math.round(rawAspectRatio * 4) / 4;
+  const colWidth = COURSE_NODE_WIDTH + NODE_SEP;
+  const gridColumns = Math.max(1, Math.floor((maxWidth + NODE_SEP) / colWidth));
+  return { aspectRatio, gridColumns };
+}
 
 type LayoutResult = {
   nodes: Node[];
@@ -30,10 +50,12 @@ type LayoutResult = {
   hiddenEdgeKeys: Set<string>;
 };
 
-const elk = new ELK({
-  workerFactory: () =>
-    new Worker(new URL("elkjs/lib/elk-worker.min.js", import.meta.url)),
-});
+function createElk() {
+  return new ELK({
+    workerFactory: () =>
+      new Worker(new URL("elkjs/lib/elk-worker.min.js", import.meta.url)),
+  });
+}
 
 function edgeKey(edge: Pick<GraphEdge, "from" | "to" | "kind">) {
   return `${edge.from}|${edge.to}|${edge.kind}`;
@@ -96,8 +118,18 @@ function hideRedundantFanoutEdgesViaBoolNodes(
   const outgoing = new Map<string, GraphEdge[]>();
   for (const edge of visibleEdges) {
     if (edge.kind !== "postrequisite") continue;
-    incoming.set(edge.to, [...(incoming.get(edge.to) ?? []), edge]);
-    outgoing.set(edge.from, [...(outgoing.get(edge.from) ?? []), edge]);
+    const into = incoming.get(edge.to);
+    if (into) {
+      into.push(edge);
+    } else {
+      incoming.set(edge.to, [edge]);
+    }
+    const outOf = outgoing.get(edge.from);
+    if (outOf) {
+      outOf.push(edge);
+    } else {
+      outgoing.set(edge.from, [edge]);
+    }
   }
 
   const byKey = new Set<string>(visibleEdges.map((edge) => edgeKey(edge)));
@@ -128,7 +160,7 @@ function hideRedundantFanoutEdgesViaBoolNodes(
 function layoutIsolatedGrid(
   isolatedNodes: GraphNode[],
   startY: number,
-  maxWidth: number,
+  columnsThatFit: number,
 ): Map<string, { x: number; y: number }> {
   const positions = new Map<string, { x: number; y: number }>();
   if (isolatedNodes.length === 0) return positions;
@@ -136,7 +168,6 @@ function layoutIsolatedGrid(
   const colWidth = COURSE_NODE_WIDTH + NODE_SEP;
   const rowHeight = COURSE_NODE_HEIGHT + RANK_SEP;
 
-  const columnsThatFit = Math.max(1, Math.floor((maxWidth + NODE_SEP) / colWidth));
   const desiredColumns = Math.max(
     ISOLATED_GRID_MIN_COLUMNS,
     Math.min(ISOLATED_GRID_MAX_COLUMNS, Math.ceil(Math.sqrt(isolatedNodes.length * 1.6))),
@@ -167,7 +198,7 @@ export async function layoutGraph(
   edges: GraphEdge[],
   options: LayoutOptions,
 ): Promise<LayoutResult> {
-  const { nodeVisibility } = options;
+  const { nodeVisibility, viewport } = options;
 
   const layoutNodes = nodes.filter((node) => nodeVisibility.get(node.id));
   const layoutBoolNodes = boolNodes.filter((node) => nodeVisibility.get(node.id));
@@ -199,16 +230,6 @@ export async function layoutGraph(
   }
   const elkCourseNodes = layoutNodes.filter((node) => connectedIds.has(node.id));
   const isolatedNodes = layoutNodes.filter((node) => !connectedIds.has(node.id));
-
-  const maxWidth = Math.max(
-    COURSE_NODE_WIDTH * 2 + NODE_SEP,
-    (options.viewportWidth ?? DEFAULT_MAX_WIDTH) - MARGIN_X * 2,
-  );
-  const maxHeight = Math.max(
-    COURSE_NODE_HEIGHT * 2 + RANK_SEP,
-    (options.viewportHeight ?? DEFAULT_MAX_HEIGHT) - MARGIN_Y * 2,
-  );
-  const aspectRatio = Math.min(Math.max(maxWidth / maxHeight, 0.5), 3);
 
   const positions = new Map<string, { x: number; y: number }>();
   const pathById = new Map<string, string>();
@@ -255,7 +276,7 @@ export async function layoutGraph(
         "elk.algorithm": "layered",
         "elk.direction": "DOWN",
         "elk.edgeRouting": "ORTHOGONAL",
-        "elk.aspectRatio": String(aspectRatio),
+        "elk.aspectRatio": String(viewport.aspectRatio),
         "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
         "elk.layered.layering.strategy": "NETWORK_SIMPLEX",
         "elk.layered.spacing.nodeNodeBetweenLayers": String(RANK_SEP),
@@ -273,7 +294,13 @@ export async function layoutGraph(
       edges: elkEdges,
     };
 
-    const result = await elk.layout(elkGraph);
+    const elk = createElk();
+    let result: ElkNode;
+    try {
+      result = await elk.layout(elkGraph);
+    } finally {
+      elk.terminateWorker();
+    }
 
     for (const child of result.children ?? []) {
       positions.set(child.id, { x: child.x ?? 0, y: child.y ?? 0 });
@@ -295,7 +322,7 @@ export async function layoutGraph(
   }
 
   const isolatedStartY = hasElkGraph ? maxBottom + RANK_SEP : MARGIN_Y;
-  const isolatedPositions = layoutIsolatedGrid(isolatedNodes, isolatedStartY, maxWidth);
+  const isolatedPositions = layoutIsolatedGrid(isolatedNodes, isolatedStartY, viewport.gridColumns);
   for (const [id, position] of isolatedPositions) {
     positions.set(id, position);
   }

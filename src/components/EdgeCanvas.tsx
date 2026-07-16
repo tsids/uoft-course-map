@@ -60,14 +60,14 @@ function edgePaint(
   if (kind === "corequisite") {
     return {
       color: palette[highlighted ? `edge-coreq-strong${suffix}` : `edge-coreq${suffix}`],
-      width: highlighted ? 3.5 : 2,
+      width: highlighted ? 3.5 : 1.5,
       dash: [6, 4],
     };
   }
   if (kind === "exclusion") {
     return {
       color: palette[highlighted ? `edge-exclusion-strong${suffix}` : `edge-exclusion${suffix}`],
-      width: highlighted ? 3.5 : 2,
+      width: highlighted ? 3.5 : 1.5,
       dash: [4, 4],
     };
   }
