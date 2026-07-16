@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
 
 export type BoolNodeData = {
   operator: "and" | "or";
@@ -28,43 +28,7 @@ function BoolNodeComponent({ data }: NodeProps) {
             : "border-slate-900 bg-surface text-slate-900 dark:border-white dark:bg-white dark:text-slate-900",
       ].join(" ")}
     >
-      <Handle
-        type="target"
-        position={Position.Top}
-          id="top"
-          style={{ top: -4, left: "50%", transform: "translateX(-50%)" }}
-          isConnectable={false}
-          isConnectableStart={false}
-        className="pointer-events-none! h-px! w-px! border-0! bg-transparent! opacity-0!"
-      />
-        <Handle
-          type="target"
-          position={Position.Right}
-          id="right"
-          style={{ top: "50%", right: -4, transform: "translateY(-50%)" }}
-          isConnectable={false}
-          isConnectableStart={false}
-          className="pointer-events-none! h-px! w-px! border-0! bg-transparent! opacity-0!"
-        />
       {operator}
-      <Handle
-        type="source"
-        position={Position.Bottom}
-          id="bottom"
-          style={{ bottom: -4, left: "50%", transform: "translateX(-50%)" }}
-          isConnectable={false}
-          isConnectableStart={false}
-          className="pointer-events-none! h-px! w-px! border-0! bg-transparent! opacity-0!"
-        />
-        <Handle
-          type="source"
-          position={Position.Left}
-          id="left"
-          style={{ top: "50%", left: -4, transform: "translateY(-50%)" }}
-          isConnectable={false}
-          isConnectableStart={false}
-        className="pointer-events-none! h-px! w-px! border-0! bg-transparent! opacity-0!"
-      />
 
       {(inputs.length > 0 || unlocks.length > 0) && (
         <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden w-max max-w-64 -translate-x-1/2 rounded-lg border border-slate-200 bg-surface px-3 py-2 text-left font-normal normal-case shadow-lg group-hover:block dark:border-slate-600 dark:bg-input">

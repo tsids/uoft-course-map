@@ -212,6 +212,7 @@ export async function layoutGraph(
 
   const positions = new Map<string, { x: number; y: number }>();
   const pathById = new Map<string, string>();
+  const pointsById = new Map<string, Point[]>();
 
   const hasElkGraph = elkCourseNodes.length + layoutBoolNodes.length > 0;
 
@@ -282,6 +283,7 @@ export async function layoutGraph(
       const points = elkEdgePoints(edge);
       if (points) {
         pathById.set(edge.id, roundedPath(points));
+        pointsById.set(edge.id, points);
       }
     }
   }
@@ -318,7 +320,11 @@ export async function layoutGraph(
     source: edge.from,
     target: edge.to,
     type: "course",
-    data: { kind: edge.kind, path: pathById.get(edgeKey(edge)) },
+    data: {
+      kind: edge.kind,
+      path: pathById.get(edgeKey(edge)),
+      points: pointsById.get(edgeKey(edge)),
+    },
   }));
 
   return { nodes: flowNodes, edges: flowEdges, hiddenEdgeKeys };

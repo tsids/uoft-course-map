@@ -124,7 +124,7 @@ function FceGpaPanelComponent({
             hint={
               fceOverridden
                 ? "Manually set; used for credit requirements."
-                : "Auto-counted from selected courses; edit to override."
+                : "Auto counted from selected courses; edit to override."
             }
             value={String(fce)}
             min={0}
@@ -161,7 +161,7 @@ function FceGpaPanelComponent({
           <p className="px-1 pt-1 text-xs leading-snug text-slate-500 dark:text-slate-400">
             {fceOverridden
               ? "Credits set manually."
-              : "Credits auto-counts selected courses."}{" "}
+              : "Credits auto counts selected courses."}{" "}
             Blank GPA is ignored.
           </p>
         </div>

@@ -35,12 +35,6 @@ function removeCollinear(points: Point[]): Point[] {
   return result;
 }
 
-/**
- * Turn an orthogonal polyline (e.g. an ELK edge section: start + bend points +
- * end) into an SVG path with rounded corners. Collinear/duplicate points are
- * collapsed first so the quadratic corner rounding never overshoots a short
- * segment.
- */
 export function roundedPath(points: Point[]): string {
   const cleaned = removeCollinear(dedupePoints(points));
   if (cleaned.length === 0) return "";

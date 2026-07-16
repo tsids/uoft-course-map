@@ -14,7 +14,18 @@
   --color-modal: #0b1220;
   --color-hint: #16223c;
 
-  /* graph edge palette */
+  /* react-flow controls + background */
+  --color-control-border: #e2e8f0;
+  --color-control-border-dark: #475569;
+  --color-control-text: #334155;
+  --color-control-text-dark: #e2e8f0;
+  --color-control-hover: #eef2f8;
+  --color-canvas-dots: #c4cedd;
+  --color-canvas-dots-dark: #334155;
+}
+
+/* graph edge palette */
+@theme static {
   --color-edge-coreq: #0ea5e9;
   --color-edge-coreq-dark: #38bdf8;
   --color-edge-coreq-strong: #0284c7;
@@ -29,15 +40,6 @@
   --color-edge-postreq-dark: #b18ad9;
   --color-edge-prereq: #64748b;
   --color-edge-prereq-dark: #94a3b8;
-
-  /* react-flow controls + background */
-  --color-control-border: #e2e8f0;
-  --color-control-border-dark: #475569;
-  --color-control-text: #334155;
-  --color-control-text-dark: #e2e8f0;
-  --color-control-hover: #eef2f8;
-  --color-canvas-dots: #c4cedd;
-  --color-canvas-dots-dark: #334155;
 }
 
 html,
@@ -97,18 +99,16 @@ body {
 .react-flow .react-flow__node,
 .react-flow .react-flow__node.selectable,
 .react-flow .react-flow__node.draggable,
-.react-flow .react-flow__edge,
-.react-flow .react-flow__edge.selectable,
 .react-flow .react-flow__node button:not(:disabled) {
   cursor: default;
 }
 
-.course-graph .react-flow__node-course.spotlit > div:not(.is-selected):not(.is-root) {
+.course-graph .react-flow__node-course.spotlit > div:not(.is-selected) {
   border-color: var(--color-emerald-500);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-emerald-400) 70%, transparent);
 }
 
-.dark .course-graph .react-flow__node-course.spotlit > div:not(.is-selected):not(.is-root) {
+.dark .course-graph .react-flow__node-course.spotlit > div:not(.is-selected) {
   border-color: var(--color-emerald-400);
 }
 
@@ -124,8 +124,4 @@ body {
 
 .course-graph.spotlighting .react-flow__node:not(.spotlit) {
   opacity: 0.35;
-}
-
-.course-graph.spotlighting .react-flow__edge:not(.spotlit) {
-  opacity: 0.25;
 }

@@ -1,6 +1,6 @@
 import { EyeOff, Info, Plus } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
 import type { DiffSide, GraphNode } from "../types/graph";
 
 const COARSE_POINTER =
@@ -68,10 +68,10 @@ function CourseNodeComponent({ data }: NodeProps) {
           : "bg-surface dark:bg-panel",
         selected
           ? "is-selected border-yellow-600 ring-2 ring-yellow-400/60 dark:border-yellow-300 dark:ring-yellow-300/50"
-          : course.isRoot
-            ? "is-root border-blue-500 ring-2 ring-blue-400/40"
-            : highlighted
-              ? "border-emerald-500 ring-[3px] ring-emerald-400/70 dark:border-emerald-400"
+          : highlighted
+            ? "border-emerald-500 ring-[3px] ring-emerald-400/70 dark:border-emerald-400"
+            : course.isRoot
+              ? "border-blue-500 ring-2 ring-blue-400/40"
               : diff === "a"
                 ? "border-orange-400 dark:border-orange-500/70"
                 : diff === "b"
@@ -82,17 +82,6 @@ function CourseNodeComponent({ data }: NodeProps) {
           : "",
       ].join(" ")}
     >
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="pointer-events-none! h-px! w-px! border-0! bg-transparent! opacity-0!"
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="pointer-events-none! h-px! w-px! border-0! bg-transparent! opacity-0!"
-      />
-
       {diffBadges.length > 0 && (
         <span className="absolute -left-2 -top-2 flex gap-0.5">
           {diffBadges.map((badge) => (
